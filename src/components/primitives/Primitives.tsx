@@ -17,14 +17,18 @@ export function Button({
   size = 'md',
   ...props
 }: PropsWithChildren<ButtonHTMLAttributes<HTMLButtonElement>> & {
-  variant?: 'primary' | 'secondary'
+  variant?: 'primary' | 'secondary' | 'danger'
   size?: 'md' | 'sm'
 }) {
   return (
     <button
       className={cx(
         styles.button,
-        variant === 'primary' ? styles.buttonPrimary : styles.buttonSecondary,
+        variant === 'primary'
+          ? styles.buttonPrimary
+          : variant === 'danger'
+            ? styles.buttonDanger
+            : styles.buttonSecondary,
         size === 'sm' ? styles.buttonSm : undefined,
         className,
       )}
@@ -153,12 +157,23 @@ export function Select({
   )
 }
 
-export function ProgressBar({ value, max }: { value: number; max: number }) {
+export function ProgressBar({
+  value,
+  max,
+  tone = 'primary',
+}: {
+  value: number
+  max: number
+  tone?: 'primary' | 'daily'
+}) {
   const width = max === 0 ? 0 : Math.max(0, Math.min(100, (value / max) * 100))
 
   return (
     <div className={styles.progressRail}>
-      <div className={styles.progressFill} style={{ width: `${width}%` }} />
+      <div
+        className={[styles.progressFill, tone === 'daily' ? styles.progressFillDaily : ''].filter(Boolean).join(' ')}
+        style={{ width: `${width}%` }}
+      />
     </div>
   )
 }
@@ -255,7 +270,11 @@ export function TabPanel({
   value,
   children,
 }: PropsWithChildren<{ value: string }>) {
-  return <TabsPrimitive.Content value={value}>{children}</TabsPrimitive.Content>
+  return (
+    <TabsPrimitive.Content value={value} forceMount className={styles.tabsContent}>
+      {children}
+    </TabsPrimitive.Content>
+  )
 }
 
 export function ToastViewport({ children }: PropsWithChildren) {
@@ -279,7 +298,7 @@ export function Toast({
   description: ReactNode
 }) {
   return (
-    <ToastPrimitive.Root open={open} onOpenChange={onOpenChange} className={styles.toastRoot}>
+    <ToastPrimitive.Root open={open} onOpenChange={onOpenChange} duration={2200} className={styles.toastRoot}>
       <ToastPrimitive.Title className={styles.toastTitle}>{title}</ToastPrimitive.Title>
       <ToastPrimitive.Description className={styles.toastDescription}>{description}</ToastPrimitive.Description>
     </ToastPrimitive.Root>

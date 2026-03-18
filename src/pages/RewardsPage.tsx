@@ -1,3 +1,7 @@
+import { CoinsIcon } from '@phosphor-icons/react/dist/csr/Coins'
+import { GiftIcon } from '@phosphor-icons/react/dist/csr/Gift'
+import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
+import { TrashIcon } from '@phosphor-icons/react/dist/csr/Trash'
 import { RewardCard } from '../components/app/RewardCard'
 import { Button, Card, Field, TextField, Textarea, Checkbox } from '../components/primitives/Primitives'
 import { createReward, deleteWalletTransaction, purchaseReward } from '../data/repository'
@@ -28,16 +32,31 @@ export function RewardsPage() {
           <Card>
             <div className={sharedStyles.panel}>
               <div className={sharedStyles.sectionTitle}>
-                <h2 className={sharedStyles.heading}>Rewards</h2>
+                <h2 className={sharedStyles.heading}>
+                  <span className={sharedStyles.headingInline}>
+                    <GiftIcon aria-hidden="true" size={20} weight="duotone" />
+                    <span>Rewards</span>
+                  </span>
+                </h2>
               </div>
               <div className={sharedStyles.stats}>
                 <div className={sharedStyles.stat}>
                   <div className={sharedStyles.statValue}>{profile.coins}</div>
-                  <div className={sharedStyles.statLabel}>Available coins</div>
+                  <div className={sharedStyles.statLabel}>
+                    <span className={sharedStyles.inlineLabel}>
+                      <CoinsIcon aria-hidden="true" size={15} weight="duotone" />
+                      <span>Available coins</span>
+                    </span>
+                  </div>
                 </div>
                 <div className={sharedStyles.stat}>
                   <div className={sharedStyles.statValue}>{activeRewards.length}</div>
-                  <div className={sharedStyles.statLabel}>Active rewards</div>
+                  <div className={sharedStyles.statLabel}>
+                    <span className={sharedStyles.inlineLabel}>
+                      <GiftIcon aria-hidden="true" size={15} weight="duotone" />
+                      <span>Active rewards</span>
+                    </span>
+                  </div>
                 </div>
                 <div className={sharedStyles.stat}>
                   <div className={sharedStyles.statValue}>{purchaseHistory.length}</div>
@@ -120,7 +139,12 @@ export function RewardsPage() {
                 onCheckedChange={(checked) => setForm((current) => ({ ...current, repeatable: checked }))}
                 label="This reward can be bought more than once"
               />
-              <Button type="submit">Add reward</Button>
+              <Button type="submit">
+                <span className={sharedStyles.inlineLabel}>
+                  <PlusIcon aria-hidden="true" size={16} weight="bold" />
+                  <span>Add reward</span>
+                </span>
+              </Button>
             </form>
           </Card>
 
@@ -145,7 +169,10 @@ export function RewardsPage() {
                             variant="secondary"
                             onClick={() => void deleteWalletTransaction(entry.id)}
                           >
-                            Remove
+                            <span className={sharedStyles.inlineLabel}>
+                              <TrashIcon aria-hidden="true" size={15} weight="bold" />
+                              <span>Remove</span>
+                            </span>
                           </Button>
                         </div>
                       </div>

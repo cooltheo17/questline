@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
 import { Button, Card, Checkbox, Field, Select, TextField, Textarea } from '../primitives/Primitives'
 import { DEFAULT_CATEGORY_ID } from '../../data/db'
 import type { Category, CreateTaskInput, Difficulty, Cadence } from '../../domain/types'
 import styles from './QuickAddComposer.module.css'
+import sharedStyles from './Shared.module.css'
 
 const cadenceOptions = [
   { label: 'One-off', value: 'none' },
@@ -11,17 +13,11 @@ const cadenceOptions = [
   { label: 'Monthly', value: 'monthly' },
 ]
 
-const rewardPresetOptions = [
-  { label: '5 XP · 1 coin', value: 'tiny', xp: 5, coins: 1 },
-  { label: '10 XP · 2 coins', value: 'small', xp: 10, coins: 2 },
-  { label: '20 XP · 4 coins', value: 'medium', xp: 20, coins: 4 },
-  { label: '35 XP · 7 coins', value: 'large', xp: 35, coins: 7 },
-] as const
-
 function initialState(categoryId: string) {
   return {
     title: '',
     categoryIds: [categoryId],
+    dueDate: '',
     cadence: 'none' as Cadence,
     difficulty: 'small' as Difficulty,
     notes: '',
@@ -52,6 +48,7 @@ export function QuickAddComposer({
     await onCreate({
       title: state.title,
       categoryIds: state.categoryIds,
+      dueDate: state.dueDate || undefined,
       cadence: state.cadence,
       difficulty: state.difficulty,
       notes: state.notes,
@@ -111,74 +108,17 @@ export function QuickAddComposer({
           <Button type="button" variant="secondary" onClick={() => setExpanded((current) => !current)}>
             {expanded ? 'Hide details' : 'Details'}
           </Button>
-          <Button type="submit">Create task</Button>
+          <Button type="submit">
+            <span className={sharedStyles.inlineLabel}>
+              <PlusIcon aria-hidden="true" size={16} weight="bold" />
+              <span>Create task</span>
+            </span>
+          </Button>
         </div>
 
         {expanded ? (
           <div className={styles.details}>
-            <div className={styles.rewardRow}>
-              <Field label="Tags">
-                <div className={styles.tagGrid}>
-                  {categories.map((category) => (
-                    <Checkbox
-                      key={category.id}
-                      checked={state.categoryIds.includes(category.id)}
-                      onCheckedChange={(checked) => toggleCategory(category.id, checked)}
-                      label={category.name}
-                    />
-                  ))}
-                </div>
-              </Field>
-              <Field label="Cadence">
-                <Select
-                  value={state.cadence}
-                  onValueChange={(value) => setState((current) => ({ ...current, cadence: value as Cadence }))}
-                  options={cadenceOptions}
-                />
-              </Field>
-              <Field label="Reward">
-                <Select
-                  value={state.difficulty}
-                  onValueChange={(value) => {
-                    const preset = rewardPresetOptions.find((option) => option.value === value)
-
-                    if (!preset) {
-                      return
-                    }
-
-                    setState((current) => ({
-                      ...current,
-                      difficulty: value as Difficulty,
-                      xp: preset.xp,
-                      coins: preset.coins,
-                    }))
-                  }}
-                  options={rewardPresetOptions.map((preset) => ({
-                    label: preset.label,
-                    value: preset.value,
-                  }))}
-                />
-              </Field>
-              <Field label="Notes">
-                <Textarea
-                  placeholder="Optional context or instructions"
-                  value={state.notes}
-                  onChange={(event) => setState((current) => ({ ...current, notes: event.target.value }))}
-                />
-              </Field>
-            </div>
-
-            <Field label="Subtasks">
-              <Textarea
-                placeholder={'One step per line\nTake vitamin D\nTake magnesium'}
-                value={state.subtasksText}
-                onChange={(event) =>
-                  setState((current) => ({ ...current, subtasksText: event.target.value }))
-                }
-              />
-            </Field>
-
-            <div className={styles.rewardRow}>
+            <div className={styles.metricsRow}>
               <Field label="XP">
                 <TextField
                   inputMode="numeric"
@@ -198,6 +138,56 @@ export function QuickAddComposer({
                 />
               </Field>
             </div>
+
+            <div className={styles.configRow}>
+              <Field label="Due date">
+                <TextField
+                  type="date"
+                  value={state.dueDate}
+                  onChange={(event) => setState((current) => ({ ...current, dueDate: event.target.value }))}
+                />
+              </Field>
+              <Field label="Cadence">
+                <Select
+                  value={state.cadence}
+                  onValueChange={(value) => setState((current) => ({ ...current, cadence: value as Cadence }))}
+                  options={cadenceOptions}
+                />
+              </Field>
+            </div>
+
+            <Field label="Tags">
+              <div className={styles.tagGrid}>
+                {categories.map((category) => (
+                  <Checkbox
+                    key={category.id}
+                    checked={state.categoryIds.includes(category.id)}
+                    onCheckedChange={(checked) => toggleCategory(category.id, checked)}
+                    label={category.name}
+                  />
+                ))}
+              </div>
+            </Field>
+
+            <div className={styles.detailRow}>
+              <Field label="Notes">
+                <Textarea
+                  placeholder="Optional context or instructions"
+                  value={state.notes}
+                  onChange={(event) => setState((current) => ({ ...current, notes: event.target.value }))}
+                />
+              </Field>
+            </div>
+
+            <Field label="Subtasks">
+              <Textarea
+                placeholder={'One step per line\nTake vitamin D\nTake magnesium'}
+                value={state.subtasksText}
+                onChange={(event) =>
+                  setState((current) => ({ ...current, subtasksText: event.target.value }))
+                }
+              />
+            </Field>
           </div>
         ) : null}
       </form>

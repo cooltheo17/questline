@@ -1,9 +1,11 @@
 import { motion } from 'framer-motion'
+import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
 import type { ReactNode } from 'react'
 import { Badge, Button, Checkbox } from '../primitives/Primitives'
 import { getCategoryTone } from '../../domain/categories'
 import { getTaskReward } from '../../domain/rewards'
 import type { Category, CompletionRecord, Task } from '../../domain/types'
+import sharedStyles from './Shared.module.css'
 import styles from './TaskCard.module.css'
 
 export function TaskCard({
@@ -100,16 +102,23 @@ export function TaskCard({
 
       <div className={styles.footer}>
         <div className={styles.badges}>
-          <Badge>
+          <Badge tone="brass">
             {reward.xp} XP · {reward.coins} coins
           </Badge>
-          <Badge>{task.cadence === 'none' ? 'One-off' : task.cadence}</Badge>
+          <Badge tone="slate">{task.cadence === 'none' ? 'One-off' : task.cadence}</Badge>
         </div>
         {actionSlot ? (
           actionSlot
         ) : task.subtasks.length === 0 ? (
           <Button disabled={isCompleted} onClick={() => void onComplete()}>
-            {isCompleted ? 'Claimed' : 'Mark done'}
+            {isCompleted ? (
+              'Claimed'
+            ) : (
+              <span className={sharedStyles.inlineLabel}>
+                <CheckIcon aria-hidden="true" size={16} weight="bold" />
+                <span>Mark done</span>
+              </span>
+            )}
           </Button>
         ) : (
           <Badge>

@@ -7,7 +7,9 @@ describe('theme registry', () => {
 
     for (const theme of themes) {
       expect(theme.id).toBeTruthy()
-      expect(theme.assets.hero.startsWith('data:image/svg+xml')).toBe(true)
+      expect(theme.assets.hero).toBeTruthy()
+      expect(theme.assets.emptyState).toBeTruthy()
+      expect(theme.assets.profileAvatar).toBeTruthy()
       expect(theme.copy.appTitle).toBeTruthy()
       expect(theme.components.button.primaryBg).toBeTruthy()
       expect(Object.keys(theme.assets.categoryIcons).length).toBeGreaterThan(0)

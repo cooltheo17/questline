@@ -53,4 +53,16 @@ describe('recurrence', () => {
       ),
     ).toBe(false)
   })
+
+  it('keeps future one-off tasks out of today until their due date', () => {
+    const futureOneOff: Task = {
+      ...weeklyTask,
+      id: 'future-one-off',
+      cadence: 'none',
+      dueDate: '2026-03-22',
+    }
+
+    expect(isTaskDueToday(futureOneOff, [], new Date('2026-03-18T12:00:00.000Z'))).toBe(false)
+    expect(isTaskDueToday(futureOneOff, [], new Date('2026-03-22T12:00:00.000Z'))).toBe(true)
+  })
 })

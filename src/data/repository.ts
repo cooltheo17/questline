@@ -19,6 +19,20 @@ function createId(): string {
   return crypto.randomUUID()
 }
 
+function normalizeDueDate(value: string | undefined): string | undefined {
+  const nextValue = value?.trim()
+  return nextValue ? nextValue : undefined
+}
+
+function parseLocalDateKey(dateKey: string): Date {
+  const [year, month, day] = dateKey.split('-').map(Number)
+  return new Date(year, month - 1, day, 12)
+}
+
+function toAnchorDate(dueDate: string | undefined): string {
+  return dueDate ? parseLocalDateKey(dueDate).toISOString() : new Date().toISOString()
+}
+
 function toSubtasks(titles: string[]) {
   return titles
     .map((title) => title.trim())
@@ -89,19 +103,21 @@ export async function updateCategory(category: Category): Promise<void> {
 
 export async function createTask(input: CreateTaskInput): Promise<void> {
   const lastTask = await db.tasks.orderBy('sortOrder').last()
+  const dueDate = normalizeDueDate(input.dueDate)
 
   await db.tasks.add({
     id: createId(),
     title: input.title.trim(),
     notes: input.notes?.trim() || undefined,
     categoryIds: input.categoryIds.length ? input.categoryIds : [DEFAULT_CATEGORY_ID],
+    dueDate,
     cadence: input.cadence,
     difficulty: input.difficulty,
     rewardOverride: input.rewardOverride,
     subtasks: toSubtasks(input.subtasks ?? []),
     active: true,
     sortOrder: (lastTask?.sortOrder ?? 0) + 1,
-    anchorDate: new Date().toISOString(),
+    anchorDate: toAnchorDate(dueDate),
     createdAt: new Date().toISOString(),
   })
 }
@@ -113,16 +129,20 @@ export async function updateTask(input: UpdateTaskInput): Promise<void> {
     return
   }
 
+  const dueDate = normalizeDueDate(input.dueDate)
+
   await db.tasks.put({
     ...current,
     title: input.title.trim(),
     notes: input.notes?.trim() || undefined,
     categoryIds: input.categoryIds.length ? input.categoryIds : [DEFAULT_CATEGORY_ID],
+    dueDate,
     cadence: input.cadence,
     difficulty: input.difficulty,
     rewardOverride: input.rewardOverride,
     subtasks: toSubtasks(input.subtasks ?? []),
     active: input.active,
+    anchorDate: dueDate ? toAnchorDate(dueDate) : current.anchorDate,
   })
 }
 

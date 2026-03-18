@@ -115,7 +115,23 @@ export function isTaskDueToday(
   }
 
   if (task.cadence === 'none') {
-    return !completions.some((completion) => completion.taskId === task.id && Boolean(completion.completedAt))
+    const isComplete = completions.some(
+      (completion) => completion.taskId === task.id && Boolean(completion.completedAt),
+    )
+
+    if (isComplete) {
+      return false
+    }
+
+    if (!task.dueDate) {
+      return true
+    }
+
+    return task.dueDate <= toDateKey(date)
+  }
+
+  if (task.dueDate && task.dueDate > toDateKey(date)) {
+    return false
   }
 
   const window = getOccurrenceWindow(task, date)

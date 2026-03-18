@@ -74,6 +74,7 @@ export interface AppTheme {
     hero: string
     emptyState: string
     levelBadge: string
+    profileAvatar: string
     iconSet: Record<string, string>
     categoryIcons: Record<string, string>
   }

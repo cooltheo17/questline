@@ -1,4 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
+import { ArchiveIcon } from '@phosphor-icons/react/dist/csr/Archive'
+import { ArrowCounterClockwiseIcon } from '@phosphor-icons/react/dist/csr/ArrowCounterClockwise'
+import { DatabaseIcon } from '@phosphor-icons/react/dist/csr/Database'
+import { DownloadSimpleIcon } from '@phosphor-icons/react/dist/csr/DownloadSimple'
+import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
+import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
+import { TagIcon } from '@phosphor-icons/react/dist/csr/Tag'
+import { TrashIcon } from '@phosphor-icons/react/dist/csr/Trash'
+import { UploadSimpleIcon } from '@phosphor-icons/react/dist/csr/UploadSimple'
 import { categoryColorOptions } from '../domain/categories'
 import {
   Badge,
@@ -54,7 +63,26 @@ export function ManagePage() {
   const [editingReward, setEditingReward] = useState<RewardItem | null>(null)
   const [message, setMessage] = useState('')
   const importInputRef = useRef<HTMLInputElement>(null)
+  const scrollPositionRef = useRef(0)
+  const hasMountedTabRef = useRef(false)
   const categoryOptions = categories.filter((category) => !category.archived)
+
+  useEffect(() => {
+    if (!hasMountedTabRef.current) {
+      hasMountedTabRef.current = true
+      return
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      try {
+        window.scrollTo({ top: scrollPositionRef.current })
+      } catch {
+        // jsdom does not implement scrolling
+      }
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [activeTab])
 
   async function handleExport() {
     const snapshot = await exportSnapshot()
@@ -72,7 +100,10 @@ export function ManagePage() {
     <div className={styles.page}>
       <Tabs
         value={activeTab}
-        onValueChange={setActiveTab}
+        onValueChange={(value) => {
+          scrollPositionRef.current = window.scrollY
+          setActiveTab(value)
+        }}
         items={[
           { label: 'Categories', value: 'categories' },
           { label: 'Tasks', value: 'tasks' },
@@ -98,7 +129,12 @@ export function ManagePage() {
                 }}
               >
                 <div>
-                  <h2 className={sharedStyles.heading}>Categories</h2>
+                  <h2 className={sharedStyles.heading}>
+                    <span className={sharedStyles.headingInline}>
+                      <TagIcon aria-hidden="true" size={20} weight="duotone" />
+                      <span>Categories</span>
+                    </span>
+                  </h2>
                 </div>
                 <Field label="New category">
                   <TextField
@@ -108,16 +144,19 @@ export function ManagePage() {
                   />
                 </Field>
                 <Field label="Color">
-                  <Select
-                    value={newCategoryColor}
-                    onValueChange={setNewCategoryColor}
-                    options={categoryColorOptions.map((option) => ({
-                      label: option.label,
-                      value: option.value,
-                    }))}
-                  />
+                  <div className={styles.smallGrid}>
+                    <div className={styles.categoryPreview}>
+                      <Badge tone={newCategoryColor}>{newCategoryName.trim() || 'New category'}</Badge>
+                    </div>
+                    <ColorPicker value={newCategoryColor} onChange={setNewCategoryColor} />
+                  </div>
                 </Field>
-                <Button type="submit">Create category</Button>
+                <Button type="submit">
+                  <span className={sharedStyles.inlineLabel}>
+                    <PlusIcon aria-hidden="true" size={16} weight="bold" />
+                    <span>Create category</span>
+                  </span>
+                </Button>
               </form>
             </Card>
 
@@ -126,23 +165,19 @@ export function ManagePage() {
                 {categories.map((category) => (
                   <div key={category.id} className={styles.smallGrid}>
                     <div className={styles.row}>
-                      <strong>{category.name}</strong>
-                      <Badge tone={category.colorKey}>{category.archived ? 'Archived' : category.colorKey}</Badge>
+                      <Badge tone={category.colorKey}>{category.name}</Badge>
+                      {category.archived ? <span className={sharedStyles.muted}>Archived</span> : null}
                     </div>
-                    <Select
-                      value={category.colorKey}
-                      onValueChange={(value) =>
-                        void updateCategory({ ...category, colorKey: value })
-                      }
-                      options={categoryColorOptions.map((option) => ({
-                        label: option.label,
-                        value: option.value,
-                      }))}
-                    />
                     <TextField
                       value={category.name}
                       onChange={(event) =>
                         void updateCategory({ ...category, name: event.target.value })
+                      }
+                    />
+                    <ColorPicker
+                      value={category.colorKey}
+                      onChange={(value) =>
+                        void updateCategory({ ...category, colorKey: value })
                       }
                     />
                     <div className={sharedStyles.actions}>
@@ -153,7 +188,14 @@ export function ManagePage() {
                           void updateCategory({ ...category, archived: !category.archived })
                         }
                       >
-                        {category.archived ? 'Restore' : 'Archive'}
+                        <span className={sharedStyles.inlineLabel}>
+                          {category.archived ? (
+                            <ArrowCounterClockwiseIcon aria-hidden="true" size={15} weight="bold" />
+                          ) : (
+                            <ArchiveIcon aria-hidden="true" size={15} weight="duotone" />
+                          )}
+                          <span>{category.archived ? 'Restore' : 'Archive'}</span>
+                        </span>
                       </Button>
                     </div>
                   </div>
@@ -171,15 +213,32 @@ export function ManagePage() {
                   <div>
                     <strong>{task.title}</strong>
                     <p className={sharedStyles.muted}>
-                      {task.cadence} · {task.categoryIds.length} tags · {task.subtasks.length} subtasks
+                      {task.cadence}
+                      {task.dueDate ? ` · due ${task.dueDate}` : ''}
+                      {' · '}
+                      {task.categoryIds.length} tags · {task.subtasks.length} subtasks
                     </p>
                   </div>
                   <div className={sharedStyles.actions}>
                     <Button size="sm" variant="secondary" onClick={() => setEditingTask(task)}>
-                      Edit
+                      <span className={sharedStyles.inlineLabel}>
+                        <PencilSimpleIcon aria-hidden="true" size={15} weight="bold" />
+                        <span>Edit</span>
+                      </span>
                     </Button>
-                    <Button size="sm" variant="secondary" onClick={() => void deleteTask(task.id)}>
-                      Delete
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => {
+                        if (window.confirm(`Delete "${task.title}"? This cannot be undone.`)) {
+                          void deleteTask(task.id)
+                        }
+                      }}
+                    >
+                      <span className={sharedStyles.inlineLabel}>
+                        <TrashIcon aria-hidden="true" size={15} weight="bold" />
+                        <span>Delete</span>
+                      </span>
                     </Button>
                   </div>
                 </div>
@@ -199,10 +258,16 @@ export function ManagePage() {
                   </div>
                   <div className={sharedStyles.actions}>
                     <Button size="sm" variant="secondary" onClick={() => setEditingReward(reward)}>
-                      Edit
+                      <span className={sharedStyles.inlineLabel}>
+                        <PencilSimpleIcon aria-hidden="true" size={15} weight="bold" />
+                        <span>Edit</span>
+                      </span>
                     </Button>
                     <Button size="sm" variant="secondary" onClick={() => void deleteReward(reward.id)}>
-                      Delete
+                      <span className={sharedStyles.inlineLabel}>
+                        <TrashIcon aria-hidden="true" size={15} weight="bold" />
+                        <span>Delete</span>
+                      </span>
                     </Button>
                   </div>
                 </div>
@@ -225,7 +290,36 @@ export function ManagePage() {
               >
                 <button type="button" className={styles.themeCard} onClick={() => setThemeId(candidate.id)}>
                   <div className={styles.themePreview}>
-                    <img src={candidate.assets.hero} alt={candidate.meta.name} />
+                    <div
+                      className={styles.themePalette}
+                      aria-hidden="true"
+                      style={{ background: candidate.components.shell.pageBackground }}
+                    >
+                      <div className={styles.themePaletteRow}>
+                        <span
+                          className={[styles.themePaletteSwatch, styles.themePaletteSwatchWide].join(' ')}
+                          style={{ background: candidate.primitives.color.cloud }}
+                        />
+                        <span
+                          className={[styles.themePaletteSwatch, styles.themePaletteSwatchTall].join(' ')}
+                          style={{ background: candidate.primitives.color.slate }}
+                        />
+                      </div>
+                      <div className={styles.themePaletteRow}>
+                        <span
+                          className={styles.themePaletteSwatch}
+                          style={{ background: candidate.primitives.color.brass }}
+                        />
+                        <span
+                          className={styles.themePaletteSwatch}
+                          style={{ background: candidate.primitives.color.sage }}
+                        />
+                        <span
+                          className={[styles.themePaletteSwatch, styles.themePaletteSwatchAccent].join(' ')}
+                          style={{ background: candidate.primitives.color.stone }}
+                        />
+                      </div>
+                    </div>
                   </div>
                   <div>
                     <h2 className={sharedStyles.heading}>{candidate.meta.name}</h2>
@@ -240,11 +334,24 @@ export function ManagePage() {
         <TabPanel value="data">
           <Card>
             <div className={sharedStyles.panel}>
-              <h2 className={sharedStyles.heading}>Backups and reset</h2>
+              <h2 className={sharedStyles.heading}>
+                <span className={sharedStyles.headingInline}>
+                  <DatabaseIcon aria-hidden="true" size={20} weight="duotone" />
+                  <span>Backups and reset</span>
+                </span>
+              </h2>
               <div className={sharedStyles.actions}>
-                <Button onClick={() => void handleExport()}>Export JSON</Button>
+                <Button onClick={() => void handleExport()}>
+                  <span className={sharedStyles.inlineLabel}>
+                    <DownloadSimpleIcon aria-hidden="true" size={16} weight="bold" />
+                    <span>Export JSON</span>
+                  </span>
+                </Button>
                 <Button variant="secondary" onClick={() => importInputRef.current?.click()}>
-                  Import JSON
+                  <span className={sharedStyles.inlineLabel}>
+                    <UploadSimpleIcon aria-hidden="true" size={16} weight="bold" />
+                    <span>Import JSON</span>
+                  </span>
                 </Button>
                 <Button
                   variant="secondary"
@@ -254,7 +361,10 @@ export function ManagePage() {
                     }
                   }}
                 >
-                  Reset everything
+                  <span className={sharedStyles.inlineLabel}>
+                    <TrashIcon aria-hidden="true" size={16} weight="bold" />
+                    <span>Reset everything</span>
+                  </span>
                 </Button>
               </div>
               {message ? <p className={sharedStyles.muted}>{message}</p> : null}
@@ -314,6 +424,7 @@ function TaskEditorDialog({
               id: draft.id,
               title: draft.title,
               categoryIds: draft.categoryIds,
+              dueDate: draft.dueDate,
               cadence: draft.cadence,
               difficulty: draft.difficulty,
               notes: draft.notes,
@@ -353,6 +464,13 @@ function TaskEditorDialog({
               value={draft.cadence}
               onValueChange={(value) => setDraft({ ...draft, cadence: value as Task['cadence'] })}
               options={cadenceOptions}
+            />
+          </Field>
+          <Field label="Due date">
+            <TextField
+              type="date"
+              value={draft.dueDate ?? ''}
+              onChange={(event) => setDraft({ ...draft, dueDate: event.target.value || undefined })}
             />
           </Field>
           <Field label="Difficulty">
@@ -397,6 +515,35 @@ function TaskEditorDialog({
         </form>
       ) : null}
     </Dialog>
+  )
+}
+
+function ColorPicker({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (value: string) => void
+}) {
+  return (
+    <div className={styles.colorPicker}>
+      {categoryColorOptions.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          className={[
+            styles.colorOption,
+            value === option.value ? styles.colorOptionActive : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          onClick={() => onChange(option.value)}
+          aria-label={`Use ${option.label}`}
+        >
+          <span className={[styles.colorSwatch, styles[`colorSwatch${option.label}`]].join(' ')} />
+        </button>
+      ))}
+    </div>
   )
 }
 

@@ -24,18 +24,21 @@ export function ProgressHeader({
     <Card>
       <div className={styles.panel}>
         <div className={styles.sectionTitle}>
-          <div>
-            <h2 className={styles.heading}>Profile</h2>
-            <p className={styles.subheading}>
-              {theme.copy.levelLabel} {profile.level}
-            </p>
-          </div>
-          <img className={styles.iconLg} src={theme.assets.levelBadge} alt="" />
+          <h2 className={styles.heading}>Profile</h2>
+          <img className={styles.profileAvatar} src={theme.assets.profileAvatar} alt="" />
         </div>
 
-        <motion.div layout>
-          <ProgressBar value={profile.currentLevelXp} max={profile.nextLevelXp} />
-        </motion.div>
+        <div className={styles.panelTight}>
+          <div className={styles.sectionTitle}>
+            <span className={styles.subheading}>Overall</span>
+            <span className={styles.subheading}>
+              {theme.copy.levelLabel} {profile.level}
+            </span>
+          </div>
+          <motion.div layout className={styles.progressWrap}>
+            <ProgressBar value={profile.currentLevelXp} max={profile.nextLevelXp} />
+          </motion.div>
+        </div>
 
         <div className={styles.panelTight}>
           <div className={styles.sectionTitle}>
@@ -44,7 +47,7 @@ export function ProgressHeader({
               {Math.min(completedCount, goalTarget)} / {goalTarget}
             </span>
           </div>
-          <ProgressBar value={Math.min(completedCount, goalTarget)} max={goalTarget} />
+          <ProgressBar value={Math.min(completedCount, goalTarget)} max={goalTarget} tone="daily" />
         </div>
 
         <div className={styles.stats}>

@@ -21,6 +21,7 @@ export interface Task {
   title: string
   notes?: string
   categoryIds: string[]
+  dueDate?: string
   cadence: Cadence
   difficulty: Difficulty
   rewardOverride?: {
@@ -73,6 +74,7 @@ export interface AppSettings {
 export interface CreateTaskInput {
   title: string
   categoryIds: string[]
+  dueDate?: string
   cadence: Cadence
   difficulty: Difficulty
   notes?: string

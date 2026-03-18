@@ -1,3 +1,5 @@
+import { CoinsIcon } from '@phosphor-icons/react/dist/csr/Coins'
+import { GiftIcon } from '@phosphor-icons/react/dist/csr/Gift'
 import { Badge, Button, Card } from '../primitives/Primitives'
 import type { RewardItem } from '../../domain/types'
 import styles from './Shared.module.css'
@@ -19,12 +21,20 @@ export function RewardCard({
             <h3 className={styles.heading}>{reward.title}</h3>
             {reward.notes ? <p className={styles.muted}>{reward.notes}</p> : null}
           </div>
-          <Badge>{reward.coinCost} coins</Badge>
+          <Badge>
+            <span className={styles.inlineLabel}>
+              <CoinsIcon aria-hidden="true" size={15} weight="duotone" />
+              <span>{reward.coinCost} coins</span>
+            </span>
+          </Badge>
         </div>
 
         <div className={styles.actions}>
           <Button disabled={!canBuy} onClick={() => void onBuy()}>
-            {canBuy ? 'Buy reward' : 'Need more coins'}
+            <span className={styles.inlineLabel}>
+              <GiftIcon aria-hidden="true" size={16} weight="duotone" />
+              <span>{canBuy ? 'Buy reward' : 'Need more coins'}</span>
+            </span>
           </Button>
           {reward.link ? (
             <Button
