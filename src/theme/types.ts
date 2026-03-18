@@ -3,6 +3,7 @@ export interface AppTheme {
   meta: {
     name: string
     description: string
+    colorScheme: 'light' | 'dark'
   }
   primitives: {
     color: Record<string, string>

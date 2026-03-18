@@ -19,6 +19,7 @@ function toCssToken(value: string): string {
 
 function applyTheme(theme: AppTheme): void {
   const root = document.documentElement
+  root.style.colorScheme = theme.meta.colorScheme
 
   for (const [key, value] of Object.entries(theme.primitives.color)) {
     root.style.setProperty(`--theme-color-${toCssToken(key)}`, value)

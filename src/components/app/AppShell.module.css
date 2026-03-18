@@ -64,7 +64,7 @@
   padding: 0.7rem 0.95rem;
   border-radius: var(--theme-radius-pill);
   border: 1px solid var(--theme-semantic-border-subtle);
-  background: rgba(255, 255, 255, 0.72);
+  background: color-mix(in srgb, var(--theme-semantic-surface-raised) 78%, transparent);
   color: var(--theme-semantic-text-secondary);
   font-weight: 600;
   transition:
@@ -77,7 +77,7 @@
 .navLink:hover {
   border-color: var(--theme-semantic-accent);
   color: var(--theme-semantic-text-primary);
-  box-shadow: 0 0 0 3px rgba(95, 114, 134, 0.08);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-semantic-accent) 14%, transparent);
 }
 
 .navLinkActive {

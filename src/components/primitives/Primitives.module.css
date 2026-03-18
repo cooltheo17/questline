@@ -19,7 +19,7 @@
 }
 
 .button:hover {
-  box-shadow: 0 0 0 1px rgba(31, 41, 51, 0.06);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--theme-semantic-text-primary) 8%, transparent);
 }
 
 .button:disabled {
@@ -34,7 +34,7 @@
 }
 
 .buttonPrimary:hover {
-  box-shadow: 0 0 0 3px rgba(95, 114, 134, 0.16);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-semantic-accent) 24%, transparent);
 }
 
 .buttonSecondary {
@@ -45,18 +45,18 @@
 
 .buttonSecondary:hover {
   border-color: var(--theme-semantic-accent);
-  box-shadow: 0 0 0 3px rgba(95, 114, 134, 0.1);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-semantic-accent) 16%, transparent);
 }
 
 .buttonDanger {
-  background: rgba(168, 58, 48, 0.1);
-  color: #9d3c34;
-  border-color: rgba(168, 58, 48, 0.22);
+  background: color-mix(in srgb, var(--theme-semantic-danger) 14%, transparent);
+  color: var(--theme-semantic-danger);
+  border-color: color-mix(in srgb, var(--theme-semantic-danger) 30%, transparent);
 }
 
 .buttonDanger:hover {
-  border-color: rgba(168, 58, 48, 0.45);
-  box-shadow: 0 0 0 3px rgba(168, 58, 48, 0.12);
+  border-color: color-mix(in srgb, var(--theme-semantic-danger) 54%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-semantic-danger) 16%, transparent);
 }
 
 .iconButton {
@@ -109,7 +109,7 @@
 .input[aria-invalid='true'],
 .textarea[aria-invalid='true'] {
   border-color: var(--theme-semantic-danger);
-  box-shadow: 0 0 0 4px rgba(179, 109, 98, 0.12);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--theme-semantic-danger) 16%, transparent);
 }
 
 .textarea {
@@ -134,46 +134,46 @@
   gap: 0.4rem;
   border-radius: var(--theme-radius-pill);
   padding: 0.28rem 0.7rem;
-  background: rgba(95, 114, 134, 0.08);
+  background: color-mix(in srgb, var(--theme-semantic-accent) 12%, transparent);
   color: var(--theme-semantic-text-secondary);
   font-size: 0.82rem;
   font-weight: 600;
 }
 
 .badgeSlate {
-  background: rgba(82, 101, 126, 0.16);
-  color: #3b4d60;
+  background: color-mix(in srgb, var(--theme-color-slate) 18%, transparent);
+  color: color-mix(in srgb, var(--theme-color-slateStrong) 72%, var(--theme-semantic-text-primary));
 }
 
 .badgeBrass {
-  background: rgba(184, 138, 68, 0.2);
-  color: #7d5820;
+  background: color-mix(in srgb, var(--theme-color-brass) 20%, transparent);
+  color: color-mix(in srgb, var(--theme-color-brass) 72%, var(--theme-semantic-text-primary));
 }
 
 .badgeSage {
-  background: rgba(108, 136, 118, 0.2);
-  color: #41604d;
+  background: color-mix(in srgb, var(--theme-color-sage) 20%, transparent);
+  color: color-mix(in srgb, var(--theme-color-sage) 72%, var(--theme-semantic-text-primary));
 }
 
 .badgeBlush {
-  background: rgba(200, 135, 125, 0.2);
-  color: #8a4e47;
+  background: color-mix(in srgb, var(--theme-color-blush) 20%, transparent);
+  color: color-mix(in srgb, var(--theme-color-blush) 72%, var(--theme-semantic-text-primary));
 }
 
 .badgePlum {
   background: rgba(125, 103, 148, 0.18);
-  color: #5d4972;
+  color: color-mix(in srgb, #8c78a6 78%, var(--theme-semantic-text-primary));
 }
 
 .badgeMist {
   background: rgba(130, 146, 160, 0.18);
-  color: #54687f;
+  color: color-mix(in srgb, #95a6b5 78%, var(--theme-semantic-text-primary));
 }
 
 .progressRail {
   overflow: hidden;
   border-radius: var(--theme-radius-pill);
-  background: rgba(73, 104, 134, 0.12);
+  background: color-mix(in srgb, var(--theme-semantic-accent) 14%, transparent);
   block-size: 0.8rem;
 }
 
@@ -185,7 +185,11 @@
 }
 
 .progressFillDaily {
-  background: linear-gradient(90deg, #8ea48f 0%, #6e8a76 100%);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--theme-semantic-success) 70%, var(--theme-semantic-surface-raised)) 0%,
+    var(--theme-semantic-success) 100%
+  );
 }
 
 .checkboxRow {
@@ -225,7 +229,7 @@
 
 .selectItem[data-highlighted] {
   outline: none;
-  background: rgba(139, 94, 43, 0.08);
+  background: color-mix(in srgb, var(--theme-semantic-accent) 12%, transparent);
 }
 
 .tabsRoot {
@@ -246,7 +250,7 @@
 .tabsTrigger {
   border: 1px solid var(--theme-semantic-border-subtle);
   border-radius: var(--theme-radius-pill);
-  background: rgba(255, 255, 255, 0.7);
+  background: color-mix(in srgb, var(--theme-semantic-surface-raised) 76%, transparent);
   color: var(--theme-semantic-text-secondary);
   padding: 0.65rem 0.95rem;
   cursor: pointer;
@@ -258,7 +262,7 @@
 
 .tabsTrigger:hover {
   border-color: var(--theme-semantic-accent);
-  box-shadow: 0 0 0 3px rgba(95, 114, 134, 0.08);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-semantic-accent) 14%, transparent);
 }
 
 .tabsTrigger[data-state='active'] {

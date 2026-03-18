@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArchiveIcon } from '@phosphor-icons/react/dist/csr/Archive'
 import { ArrowCounterClockwiseIcon } from '@phosphor-icons/react/dist/csr/ArrowCounterClockwise'
+import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
 import { DatabaseIcon } from '@phosphor-icons/react/dist/csr/Database'
 import { DownloadSimpleIcon } from '@phosphor-icons/react/dist/csr/DownloadSimple'
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
@@ -66,6 +67,20 @@ export function ManagePage() {
   const scrollPositionRef = useRef(0)
   const hasMountedTabRef = useRef(false)
   const categoryOptions = categories.filter((category) => !category.archived)
+  const sortedTasks = [...tasks].sort((left, right) => {
+    const leftRepeating = left.cadence === 'none' ? 1 : 0
+    const rightRepeating = right.cadence === 'none' ? 1 : 0
+
+    if (leftRepeating !== rightRepeating) {
+      return leftRepeating - rightRepeating
+    }
+
+    if (left.active !== right.active) {
+      return left.active ? -1 : 1
+    }
+
+    return left.sortOrder - right.sortOrder
+  })
 
   useEffect(() => {
     if (!hasMountedTabRef.current) {
@@ -94,6 +109,21 @@ export function ManagePage() {
     link.click()
     URL.revokeObjectURL(url)
     setMessage('Backup exported.')
+  }
+
+  function retireTask(task: Task) {
+    return updateTask({
+      id: task.id,
+      title: task.title,
+      categoryIds: task.categoryIds,
+      dueDate: task.dueDate,
+      cadence: task.cadence,
+      difficulty: task.difficulty,
+      notes: task.notes,
+      rewardOverride: task.rewardOverride,
+      subtasks: task.subtasks.map((subtask) => subtask.title),
+      active: false,
+    })
   }
 
   return (
@@ -208,7 +238,7 @@ export function ManagePage() {
         <TabPanel value="tasks">
           <Card>
             <div className={sharedStyles.list}>
-              {tasks.map((task) => (
+              {sortedTasks.map((task) => (
                 <div key={task.id} className={styles.row}>
                   <div>
                     <strong>{task.title}</strong>
@@ -217,9 +247,18 @@ export function ManagePage() {
                       {task.dueDate ? ` · due ${task.dueDate}` : ''}
                       {' · '}
                       {task.categoryIds.length} tags · {task.subtasks.length} subtasks
+                      {!task.active ? ' · completed' : ''}
                     </p>
                   </div>
                   <div className={sharedStyles.actions}>
+                    {task.cadence !== 'none' && task.active ? (
+                      <Button size="sm" variant="secondary" onClick={() => void retireTask(task)}>
+                        <span className={sharedStyles.inlineLabel}>
+                          <CheckIcon aria-hidden="true" size={15} weight="bold" />
+                          <span>Complete</span>
+                        </span>
+                      </Button>
+                    ) : null}
                     <Button size="sm" variant="secondary" onClick={() => setEditingTask(task)}>
                       <span className={sharedStyles.inlineLabel}>
                         <PencilSimpleIcon aria-hidden="true" size={15} weight="bold" />
@@ -298,32 +337,35 @@ export function ManagePage() {
                       <div className={styles.themePaletteRow}>
                         <span
                           className={[styles.themePaletteSwatch, styles.themePaletteSwatchWide].join(' ')}
-                          style={{ background: candidate.primitives.color.cloud }}
+                          style={{ background: candidate.semantic.surfaceRaised }}
                         />
                         <span
                           className={[styles.themePaletteSwatch, styles.themePaletteSwatchTall].join(' ')}
-                          style={{ background: candidate.primitives.color.slate }}
+                          style={{ background: candidate.components.button.primaryBg }}
                         />
                       </div>
                       <div className={styles.themePaletteRow}>
                         <span
                           className={styles.themePaletteSwatch}
-                          style={{ background: candidate.primitives.color.brass }}
+                          style={{ background: candidate.semantic.accent }}
                         />
                         <span
                           className={styles.themePaletteSwatch}
-                          style={{ background: candidate.primitives.color.sage }}
+                          style={{ background: candidate.semantic.success }}
                         />
                         <span
                           className={[styles.themePaletteSwatch, styles.themePaletteSwatchAccent].join(' ')}
-                          style={{ background: candidate.primitives.color.stone }}
+                          style={{ background: candidate.semantic.warning }}
                         />
                       </div>
                     </div>
                   </div>
                   <div>
                     <h2 className={sharedStyles.heading}>{candidate.meta.name}</h2>
-                    <p className={sharedStyles.muted}>{candidate.meta.description}</p>
+                    <p className={sharedStyles.muted}>
+                      {candidate.meta.description}
+                      {` · ${candidate.meta.colorScheme === 'dark' ? 'Dark' : 'Light'}`}
+                    </p>
                   </div>
                 </button>
               </Card>

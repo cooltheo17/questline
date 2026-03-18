@@ -12,7 +12,7 @@
 
 .task:hover {
   border-color: var(--theme-task-card-hover-border);
-  box-shadow: 0 0 0 3px rgba(95, 114, 134, 0.08);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-semantic-accent) 14%, transparent);
 }
 
 .draggable {
@@ -21,7 +21,7 @@
 
 .dragActive {
   border-color: var(--theme-semantic-accent);
-  box-shadow: 0 0 0 3px rgba(95, 114, 134, 0.14);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-semantic-accent) 22%, transparent);
 }
 
 .completed {
