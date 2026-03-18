@@ -66,7 +66,7 @@ export const foundryTheme: AppTheme = {
     danger: '#c08780',
     xp: '#7d95ad',
     coin: '#b99860',
-    taskComplete: '#1b2923',
+    taskComplete: '#22302a',
   },
   components: {
     shell: {
@@ -78,7 +78,7 @@ export const foundryTheme: AppTheme = {
       background: '#18212b',
       border: '#2a3743',
       hoverBorder: '#7d95ad',
-      completedBackground: '#1d2b25',
+      completedBackground: 'linear-gradient(180deg, rgba(118, 145, 128, 0.08), rgba(24, 33, 43, 0.98))',
     },
     progressCard: {
       background: 'linear-gradient(135deg, rgba(26,35,45,0.98), rgba(16,22,29,0.98))',

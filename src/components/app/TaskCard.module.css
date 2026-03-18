@@ -26,6 +26,8 @@
 
 .completed {
   background: var(--theme-task-card-completed-background);
+  border-color: color-mix(in srgb, var(--theme-semantic-success) 24%, var(--theme-task-card-border));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--theme-semantic-success) 12%, transparent);
 }
 
 .row {
