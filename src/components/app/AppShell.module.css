@@ -1,0 +1,97 @@
+.app {
+  min-height: 100svh;
+  background: var(--theme-shell-page-background);
+}
+
+.container {
+  width: min(76rem, calc(100vw - 2rem));
+  margin: 0 auto;
+  padding: 1rem 0 2rem;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.masthead {
+  padding: 1.5rem;
+  border: 1px solid var(--theme-semantic-border-subtle);
+  border-radius: var(--theme-radius-lg);
+  background: var(--theme-shell-panel-background);
+  box-shadow: var(--theme-shadow-card);
+  display: grid;
+  gap: 1.25rem;
+  align-content: center;
+}
+
+.title {
+  font-family: var(--theme-font-display);
+  font-size: clamp(2.2rem, 5vw, 3.7rem);
+  line-height: 1;
+  color: var(--theme-semantic-text-primary);
+}
+
+.heroArt {
+  min-height: 15rem;
+  border-radius: var(--theme-radius-lg);
+  border: 1px solid var(--theme-semantic-border-subtle);
+  background: var(--theme-shell-panel-background);
+  box-shadow: var(--theme-shadow-card);
+  overflow: hidden;
+}
+
+.heroArt img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nav {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.navLink {
+  padding: 0.7rem 0.95rem;
+  border-radius: var(--theme-radius-pill);
+  border: 1px solid var(--theme-semantic-border-subtle);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--theme-semantic-text-secondary);
+  font-weight: 600;
+  transition:
+    border-color var(--theme-motion-fast),
+    box-shadow var(--theme-motion-fast),
+    color var(--theme-motion-fast),
+    background var(--theme-motion-fast);
+}
+
+.navLink:hover {
+  border-color: var(--theme-semantic-accent);
+  color: var(--theme-semantic-text-primary);
+  box-shadow: 0 0 0 3px rgba(95, 114, 134, 0.08);
+}
+
+.navLinkActive {
+  background: var(--theme-button-primary-bg);
+  color: var(--theme-button-primary-text);
+  border-color: var(--theme-button-primary-bg);
+}
+
+.content {
+  margin-top: 1rem;
+}
+
+@media (max-width: 860px) {
+  .container {
+    width: min(76rem, calc(100vw - 1rem));
+    padding-inline: 0.5rem;
+  }
+
+  .hero {
+    grid-template-columns: 1fr;
+  }
+}

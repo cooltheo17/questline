@@ -1,0 +1,118 @@
+.page {
+  display: grid;
+  gap: 1rem;
+}
+
+.columns {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1.4fr) minmax(20rem, 0.85fr);
+}
+
+.stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.history {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.historyRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 1rem;
+  row-gap: 0.35rem;
+  color: var(--theme-semantic-text-secondary);
+  padding: 0.75rem 0;
+  border-top: 1px solid rgba(216, 211, 200, 0.7);
+}
+
+.historyRow:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.historyMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.historyActions {
+  display: flex;
+  justify-content: end;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.smallGrid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.themeCard {
+  cursor: pointer;
+  display: grid;
+  gap: 0.8rem;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+
+.themeCardActive {
+  border-color: var(--theme-semantic-accent);
+  box-shadow: 0 0 0 2px rgba(139, 94, 43, 0.12);
+}
+
+.themePreview {
+  border-radius: var(--theme-radius-md);
+  overflow: hidden;
+}
+
+.dialogForm {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.featureGrid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1.25fr) minmax(18rem, 0.9fr);
+}
+
+.scrollPanel {
+  max-height: 28rem;
+  overflow: auto;
+  padding-right: 0.15rem;
+}
+
+.compactList {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.compactRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+@media (max-width: 1020px) {
+  .columns,
+  .featureGrid {
+    grid-template-columns: 1fr;
+  }
+}

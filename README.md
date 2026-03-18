@@ -1,0 +1,88 @@
+# Questline
+
+Questline is a local-first React todo app with a lightweight progression loop:
+
+- fast capture
+- recurring and one-off tasks
+- optional subtasks
+- XP, levels, and coins
+- a real-life reward shop
+- a theme system designed for one-place re-skinning
+
+## Stack
+
+- React 19
+- TypeScript
+- Vite
+- React Router
+- Dexie + IndexedDB
+- Radix primitives
+- Framer Motion
+- Zustand for ephemeral UI only
+- Vitest + Testing Library
+- Playwright smoke-test scaffold
+
+## Scripts
+
+```bash
+npm install
+npm run dev
+npm run build
+npm run lint
+npm test
+npm run test:e2e
+```
+
+`npm run test:e2e` requires Playwright browsers to be installed locally.
+
+## Runtime
+
+- Node.js `24.14.0`
+- npm `11.9.0`
+
+The repo includes both `.nvmrc` and `.node-version` so common version managers resolve the same stable runtime.
+
+## Architecture
+
+### Durable state
+
+All task, completion, reward, and wallet data lives in IndexedDB through Dexie.
+
+### UI state
+
+Zustand is only used for short-lived UI state such as toast notifications.
+
+### Themeing
+
+Theme definitions live under `src/theme/`. Feature code consumes semantic tokens and theme asset keys rather than hardcoded theme values.
+
+To add a new theme:
+
+1. Copy the existing theme file in `src/theme/themes/`
+2. Change tokens, copy, and asset generators
+3. Register the theme in `src/theme/themeRegistry.ts`
+
+## Product Areas
+
+- `src/pages/TodayPage.tsx`: quick capture, due tasks, completions, progression header
+- `src/pages/RewardsPage.tsx`: reward catalog, buying flow, purchase history
+- `src/pages/ManagePage.tsx`: categories, task editing, reward editing, theme selection, import/export/reset
+
+## Tests
+
+Current automated coverage includes:
+
+- level curve rules
+- reward defaults and overrides
+- weekly/monthly recurrence logic
+- reward gating until all subtasks are complete
+- quick-add keyboard flow
+- insufficient-coin purchase state
+- theme contract presence
+
+## Notes
+
+- Theme selection is stored outside IndexedDB.
+- Missed recurring tasks do not stack.
+- One category per task in v1.
+- The bundled theme is original-IP-inspired rather than based on protected third-party assets or names.

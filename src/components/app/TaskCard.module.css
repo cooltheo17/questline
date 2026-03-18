@@ -1,0 +1,79 @@
+.task {
+  display: grid;
+  gap: 0.9rem;
+  background: var(--theme-task-card-background);
+  border: 1px solid var(--theme-task-card-border);
+  border-radius: var(--theme-radius-lg);
+  padding: 1rem;
+  transition:
+    border-color var(--theme-motion-fast),
+    box-shadow var(--theme-motion-fast);
+}
+
+.task:hover {
+  border-color: var(--theme-task-card-hover-border);
+  box-shadow: 0 0 0 3px rgba(95, 114, 134, 0.08);
+}
+
+.draggable {
+  cursor: grab;
+}
+
+.dragActive {
+  border-color: var(--theme-semantic-accent);
+  box-shadow: 0 0 0 3px rgba(95, 114, 134, 0.14);
+}
+
+.completed {
+  background: var(--theme-task-card-completed-background);
+}
+
+.row {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: start;
+}
+
+.tagList {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: end;
+}
+
+.titleWrap {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.title {
+  color: var(--theme-semantic-text-primary);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.notes {
+  color: var(--theme-semantic-text-secondary);
+  font-size: 0.95rem;
+}
+
+.subtasks {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.badges {
+  display: flex;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
