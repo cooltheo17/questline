@@ -130,6 +130,27 @@ export async function updateCategory(category: Category): Promise<void> {
   await db.categories.put(category)
 }
 
+export async function deleteCategory(categoryId: string): Promise<void> {
+  if (categoryId === DEFAULT_CATEGORY_ID) {
+    return
+  }
+
+  await db.transaction('rw', db.categories, db.tasks, async () => {
+    const category = await db.categories.get(categoryId)
+
+    if (!category) {
+      return
+    }
+
+    await db.categories.delete(categoryId)
+    await db.categories.update(DEFAULT_CATEGORY_ID, { archived: false })
+    await db.tasks.where('categoryIds').equals(categoryId).modify((task) => {
+      const nextCategoryIds = task.categoryIds.filter((id) => id !== categoryId)
+      task.categoryIds = nextCategoryIds.length ? nextCategoryIds : [DEFAULT_CATEGORY_ID]
+    })
+  })
+}
+
 export async function createTask(input: CreateTaskInput): Promise<void> {
   const lastTask = await db.tasks.orderBy('sortOrder').last()
   const dueDate = normalizeDueDate(input.dueDate)

@@ -28,6 +28,7 @@ import { exportSnapshot } from '../data/backup'
 import {
   createCategory,
   createQuest,
+  deleteCategory,
   deleteBulkImport,
   deleteQuest,
   deleteReward,
@@ -39,6 +40,7 @@ import {
   updateReward,
   updateTask,
 } from '../data/repository'
+import { DEFAULT_CATEGORY_ID } from '../data/db'
 import { useAppCollectionsContext } from '../hooks/AppCollectionsContext'
 import { useTheme } from '../theme/themeContext'
 import type { Category, Quest, RewardItem, Task } from '../domain/types'
@@ -181,15 +183,10 @@ export function ManagePage() {
   const hasMountedTabRef = useRef(false)
   const categoryOptions = categories.filter((category) => !category.archived)
   const sortedTasks = [...tasks].sort((left, right) => {
-    const leftRepeating = left.cadence === 'none' ? 1 : 0
-    const rightRepeating = right.cadence === 'none' ? 1 : 0
+    const createdAtComparison = left.createdAt.localeCompare(right.createdAt)
 
-    if (leftRepeating !== rightRepeating) {
-      return leftRepeating - rightRepeating
-    }
-
-    if (left.active !== right.active) {
-      return left.active ? -1 : 1
+    if (createdAtComparison !== 0) {
+      return createdAtComparison
     }
 
     return left.sortOrder - right.sortOrder
@@ -344,6 +341,26 @@ export function ManagePage() {
                           <span>{category.archived ? 'Restore' : 'Archive'}</span>
                         </span>
                       </Button>
+                      {category.id !== DEFAULT_CATEGORY_ID ? (
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                `Delete "${category.name}"? Tasks using only this category will be moved to General. This cannot be undone.`,
+                              )
+                            ) {
+                              void deleteCategory(category.id)
+                            }
+                          }}
+                        >
+                          <span className={sharedStyles.inlineLabel}>
+                            <TrashIcon aria-hidden="true" size={15} weight="bold" />
+                            <span>Delete</span>
+                          </span>
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -353,91 +370,100 @@ export function ManagePage() {
         </TabPanel>
 
         <TabPanel value="tasks">
-          <Card>
-            <div data-slot="stack-list" className={sharedStyles.list}>
-              {bulkImportBatches.length ? (
+          <div className={styles.stack}>
+            {bulkImportBatches.length ? (
+              <Card>
+                <div data-slot="stack-list" className={sharedStyles.list}>
+                  <div className={styles.row}>
+                    <div>
+                      <strong>Bulk imports</strong>
+                    </div>
+                  </div>
+                  {bulkImportBatches.map((batch) => (
+                    <div key={batch.id} className={styles.row}>
+                      <div>
+                        <strong>{batch.label}</strong>
+                        <p data-slot="muted-text" className={sharedStyles.muted}>
+                          {batch.taskCount} tasks · {batch.questCount} quests · {batch.categoryCount} categories
+                        </p>
+                      </div>
+                      <div data-slot="action-group" className={sharedStyles.actions}>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() => {
+                            if (window.confirm(`Remove "${batch.label}" and everything it imported? This cannot be undone.`)) {
+                              void deleteBulkImport(batch.id)
+                            }
+                          }}
+                        >
+                          <span className={sharedStyles.inlineLabel}>
+                            <TrashIcon aria-hidden="true" size={15} weight="bold" />
+                            <span>Remove batch</span>
+                          </span>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            ) : null}
+
+            <Card>
+              <div data-slot="stack-list" className={sharedStyles.list}>
                 <div className={styles.row}>
                   <div>
-                    <strong>Bulk imports</strong>
-                    <p data-slot="muted-text" className={sharedStyles.muted}>
-                      Remove a full imported batch from here.
-                    </p>
+                    <strong>Tasks</strong>
                   </div>
                 </div>
-              ) : null}
-              {bulkImportBatches.map((batch) => (
-                <div key={batch.id} className={styles.row}>
-                  <div>
-                    <strong>{batch.label}</strong>
-                    <p data-slot="muted-text" className={sharedStyles.muted}>
-                      {batch.taskCount} tasks · {batch.questCount} quests · {batch.categoryCount} categories
-                    </p>
-                  </div>
-                  <div data-slot="action-group" className={sharedStyles.actions}>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={() => {
-                        if (window.confirm(`Remove "${batch.label}" and everything it imported? This cannot be undone.`)) {
-                          void deleteBulkImport(batch.id)
-                        }
-                      }}
-                    >
-                      <span className={sharedStyles.inlineLabel}>
-                        <TrashIcon aria-hidden="true" size={15} weight="bold" />
-                        <span>Remove batch</span>
-                      </span>
-                    </Button>
-                  </div>
-                </div>
-              ))}
-              {sortedTasks.map((task) => (
-                <div key={task.id} className={styles.row}>
-                  <div>
-                    <strong>{task.title}</strong>
-                    <p data-slot="muted-text" className={sharedStyles.muted}>
-                      {task.cadence}
-                      {task.dueDate ? ` · due ${task.dueDate}` : ''}
-                      {' · '}
-                      {task.categoryIds.length} tags · {task.subtasks.length} subtasks
-                      {task.importBatchId ? ' · bulk import' : ''}
-                      {!task.active ? ' · completed' : ''}
-                    </p>
-                  </div>
-                  <div data-slot="action-group" className={sharedStyles.actions}>
-                    {task.cadence !== 'none' && task.active ? (
-                      <Button size="sm" variant="secondary" onClick={() => void retireTask(task)}>
+                {sortedTasks.map((task) => (
+                  <div key={task.id} className={styles.row}>
+                    <div>
+                      <strong>{task.title}</strong>
+                      <p data-slot="muted-text" className={sharedStyles.muted}>
+                        {task.cadence}
+                        {task.dueDate ? ` · due ${task.dueDate}` : ''}
+                        {' · '}
+                      {task.categoryIds.length} categories · {task.subtasks.length} subtasks
+                        {task.importBatchId ? ' · bulk import' : ''}
+                        {!task.active ? ' · completed' : ''}
+                      </p>
+                    </div>
+                    <div data-slot="action-group" className={sharedStyles.actions}>
+                      {task.cadence !== 'none' && task.active ? (
+                        <Button size="sm" variant="secondary" onClick={() => void retireTask(task)}>
+                          <span className={sharedStyles.inlineLabel}>
+                            <CheckIcon aria-hidden="true" size={15} weight="bold" />
+                            <span>Complete</span>
+                          </span>
+                        </Button>
+                      ) : null}
+                      <Button size="sm" variant="secondary" onClick={() => setEditingTask(task)}>
                         <span className={sharedStyles.inlineLabel}>
-                          <CheckIcon aria-hidden="true" size={15} weight="bold" />
-                          <span>Complete</span>
+                          <PencilSimpleIcon aria-hidden="true" size={15} weight="bold" />
+                          <span>Edit</span>
                         </span>
                       </Button>
-                    ) : null}
-                    <Button size="sm" variant="secondary" onClick={() => setEditingTask(task)}>
-                      <span className={sharedStyles.inlineLabel}>
-                        <PencilSimpleIcon aria-hidden="true" size={15} weight="bold" />
-                        <span>Edit</span>
-                      </span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={() => {
-                        if (window.confirm(`Delete "${task.title}"? This cannot be undone.`)) {
-                          void deleteTask(task.id)
-                        }
-                      }}
-                    >
-                      <span className={sharedStyles.inlineLabel}>
-                        <TrashIcon aria-hidden="true" size={15} weight="bold" />
-                        <span>Delete</span>
-                      </span>
-                    </Button>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => {
+                          if (window.confirm(`Delete "${task.title}"? This cannot be undone.`)) {
+                            void deleteTask(task.id)
+                          }
+                        }}
+                      >
+                        <span className={sharedStyles.inlineLabel}>
+                          <TrashIcon aria-hidden="true" size={15} weight="bold" />
+                          <span>Delete</span>
+                        </span>
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </Card>
+                ))}
+              </div>
+            </Card>
+          </div>
         </TabPanel>
 
         <TabPanel value="quests">
@@ -881,7 +907,7 @@ function TaskEditorDialog({
               />
             </Field>
           </div>
-          <Field label="Tags">
+          <Field label="Categories">
             <div className={styles.taskTagGrid}>
               {categories.map((category) => (
                 <Checkbox

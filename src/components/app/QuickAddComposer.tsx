@@ -322,7 +322,7 @@ export function QuickAddComposer({
                 </Field>
               </div>
 
-              <Field label="Tags">
+              <Field label="Categories">
                 <div className={styles.tagGrid}>
                   {categories.map((category) => (
                     <label key={category.id} className={styles.tagOption}>

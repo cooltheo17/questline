@@ -5,6 +5,7 @@ import {
   completeTask,
   completeQuest,
   createFromBulkImportPlan,
+  deleteCategory,
   createTask,
   createQuest,
   deleteBulkImport,
@@ -207,6 +208,30 @@ describe('repository flows', () => {
 
     const task = await db.tasks.toCollection().first()
     expect(task?.questId).toBeUndefined()
+  })
+
+  it('deletes a category and moves affected tasks to General when needed', async () => {
+    await createTask({
+      title: 'Doctor booking',
+      categoryIds: ['health'],
+      cadence: 'none',
+      difficulty: 'small',
+    })
+
+    await createTask({
+      title: 'Stretch',
+      categoryIds: ['health', 'rituals'],
+      cadence: 'daily',
+      difficulty: 'small',
+    })
+
+    await deleteCategory('health')
+
+    expect(await db.categories.get('health')).toBeUndefined()
+
+    const tasks = await db.tasks.orderBy('sortOrder').toArray()
+    expect(tasks[0]?.categoryIds).toEqual(['inbox'])
+    expect(tasks[1]?.categoryIds).toEqual(['rituals'])
   })
 
   it('creates quests and tasks from a bulk import plan', async () => {
