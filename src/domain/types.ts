@@ -8,6 +8,7 @@ export interface Category {
   colorKey: string
   sortOrder: number
   archived: boolean
+  importBatchId?: string
 }
 
 export interface Subtask {
@@ -21,6 +22,7 @@ export interface Task {
   title: string
   notes?: string
   categoryIds: string[]
+  questId?: string
   dueDate?: string
   cadence: Cadence
   difficulty: Difficulty
@@ -34,6 +36,7 @@ export interface Task {
   anchorDate: string
   createdAt: string
   archivedAt?: string
+  importBatchId?: string
 }
 
 export interface CompletionRecord {
@@ -57,9 +60,23 @@ export interface RewardItem {
   createdAt: string
 }
 
+export interface Quest {
+  id: string
+  title: string
+  description?: string
+  imageUrl?: string
+  rewardXp: number
+  rewardCoins: number
+  sortOrder: number
+  archived: boolean
+  createdAt: string
+  completedAt?: string
+  importBatchId?: string
+}
+
 export interface WalletTransaction {
   id: string
-  type: 'task_reward' | 'reward_purchase'
+  type: 'task_reward' | 'reward_purchase' | 'quest_reward'
   amount: number
   sourceId: string
   createdAt: string
@@ -74,6 +91,7 @@ export interface AppSettings {
 export interface CreateTaskInput {
   title: string
   categoryIds: string[]
+  questId?: string
   dueDate?: string
   cadence: Cadence
   difficulty: Difficulty
@@ -87,9 +105,23 @@ export interface CreateCategoryInput {
   colorKey: string
 }
 
+export interface CreateQuestInput {
+  title: string
+  description?: string
+  imageUrl?: string
+  rewardXp: number
+  rewardCoins: number
+}
+
 export interface UpdateTaskInput extends CreateTaskInput {
   id: string
   active: boolean
+}
+
+export interface UpdateQuestInput extends CreateQuestInput {
+  id: string
+  archived: boolean
+  completedAt?: string
 }
 
 export interface CreateRewardInput {
@@ -110,6 +142,7 @@ export interface AppSnapshot {
   exportedAt: string
   categories: Category[]
   tasks: Task[]
+  quests: Quest[]
   completions: CompletionRecord[]
   rewards: RewardItem[]
   walletTransactions: WalletTransaction[]

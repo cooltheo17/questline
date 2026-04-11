@@ -1,4 +1,6 @@
 import { motion } from 'framer-motion'
+import { CoinsIcon } from '@phosphor-icons/react/dist/csr/Coins'
+import { FireIcon } from '@phosphor-icons/react/dist/csr/Fire'
 import { ProgressBar, Card } from '../primitives/Primitives'
 import { useTheme } from '../../theme/themeContext'
 import type { ProfileSnapshot } from '../../domain/selectors'
@@ -22,16 +24,16 @@ export function ProgressHeader({
 
   return (
     <Card>
-      <div className={styles.panel}>
-        <div className={styles.sectionTitle}>
-          <h2 className={styles.heading}>Profile</h2>
-          <img className={styles.profileAvatar} src={theme.assets.profileAvatar} alt="" />
+      <div data-slot="section-panel" className={styles.panel}>
+        <div data-slot="section-title" className={styles.sectionTitle}>
+          <h2 data-slot="section-heading" className={styles.heading}>Profile</h2>
+          <img data-slot="profile-avatar" className={styles.profileAvatar} src={theme.assets.profileAvatar} alt="" />
         </div>
 
-        <div className={styles.panelTight}>
-          <div className={styles.sectionTitle}>
-            <span className={styles.subheading}>Overall</span>
-            <span className={styles.subheading}>
+        <div data-slot="panel-tight" className={styles.panelTight}>
+          <div data-slot="section-title" className={styles.sectionTitle}>
+            <span data-slot="subheading" className={styles.subheading}>Overall</span>
+            <span data-slot="subheading" className={styles.subheading}>
               {theme.copy.levelLabel} {profile.level}
             </span>
           </div>
@@ -40,32 +42,46 @@ export function ProgressHeader({
           </motion.div>
         </div>
 
-        <div className={styles.panelTight}>
-          <div className={styles.sectionTitle}>
-            <span className={styles.subheading}>Daily goal</span>
-            <span className={styles.subheading}>
+        <div data-slot="panel-tight" className={styles.panelTight}>
+          <div data-slot="section-title" className={styles.sectionTitle}>
+            <span data-slot="subheading" className={styles.subheading}>Daily goal</span>
+            <span data-slot="subheading" className={styles.subheading}>
               {Math.min(completedCount, goalTarget)} / {goalTarget}
             </span>
           </div>
           <ProgressBar value={Math.min(completedCount, goalTarget)} max={goalTarget} tone="daily" />
         </div>
 
-        <div className={styles.stats}>
-          <div className={styles.stat}>
-            <div className={styles.statValue}>{profile.totalXp}</div>
-            <div className={styles.statLabel}>{theme.copy.xpLabel}</div>
+        <div data-slot="stats-grid" className={styles.profileStats}>
+          <div data-slot="stat" className={styles.profileStat}>
+            <div className={styles.statValueRow}>
+              <span data-slot="stat-value" className={styles.statValue}>{profile.totalXp}</span>
+              <span className={styles.statUnit}>xp</span>
+            </div>
+            <div data-slot="stat-label" className={styles.statLabel}>Total</div>
           </div>
-          <div className={styles.stat}>
-            <div className={styles.statValue}>{profile.coins}</div>
-            <div className={styles.statLabel}>{theme.copy.coinLabel}</div>
+          <div data-slot="stat" className={styles.profileStat}>
+            <div className={styles.statValueRow}>
+              <span data-slot="stat-value" className={styles.statValue}>{profile.coins}</span>
+              <CoinsIcon aria-hidden="true" size={16} weight="duotone" />
+            </div>
+            <div data-slot="stat-label" className={styles.statLabel}>{theme.copy.coinLabel}</div>
           </div>
-          <div className={styles.stat}>
-            <div className={styles.statValue}>{profile.streak}</div>
-            <div className={styles.statLabel}>Ritual streak</div>
+          <div data-slot="stat" className={styles.profileStat}>
+            <div className={styles.statValueRow}>
+              <span data-slot="stat-value" className={styles.statValue}>{profile.streak}</span>
+              <FireIcon aria-hidden="true" size={15} weight="duotone" />
+            </div>
+            <div data-slot="stat-label" className={styles.statLabel}>Ritual streak</div>
           </div>
-          <div className={styles.stat}>
-            <div className={styles.statValue}>{profile.nextLevelXp - profile.currentLevelXp}</div>
-            <div className={styles.statLabel}>XP to next level</div>
+          <div data-slot="stat" className={styles.profileStat}>
+            <div className={styles.statValueRow}>
+              <span data-slot="stat-value" className={styles.statValue}>
+                {profile.nextLevelXp - profile.currentLevelXp}
+              </span>
+              <span className={styles.statUnit}>xp</span>
+            </div>
+            <div data-slot="stat-label" className={styles.statLabel}>Next level</div>
           </div>
         </div>
       </div>

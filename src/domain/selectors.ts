@@ -1,14 +1,22 @@
 import { getLevelFromXp } from './level'
 import { isRitualTask } from './categories'
-import { getCompletionForDate, isSameLocalDay, isTaskDueToday } from './recurrence'
+import { getCompletionForDate, isSameLocalDay, isTaskDueToday, toDateKey } from './recurrence'
 import { getWalletBalance } from './rewards'
-import type { Category, CompletionRecord, Task, WalletTransaction } from './types'
+import type { Category, CompletionRecord, Quest, Task, WalletTransaction } from './types'
 
 export interface TodayTaskView {
   task: Task
   categories: Category[]
   completion?: CompletionRecord
   isCompletedToday: boolean
+}
+
+export type TodayTaskGroupKey = 'overdue' | 'oneOff' | 'quest' | 'ritual' | 'other'
+
+export interface TodayTaskGroup {
+  key: TodayTaskGroupKey
+  title: string
+  items: TodayTaskView[]
 }
 
 export interface ProfileSnapshot {
@@ -25,8 +33,11 @@ export function getProfileSnapshot(
   walletTransactions: WalletTransaction[],
   tasks: Task[],
   categories: Category[],
+  quests: Quest[],
 ): ProfileSnapshot {
-  const totalXp = completions.reduce((total, completion) => total + completion.xpAwarded, 0)
+  const taskXp = completions.reduce((total, completion) => total + completion.xpAwarded, 0)
+  const questXp = quests.reduce((total, quest) => (quest.completedAt ? total + quest.rewardXp : total), 0)
+  const totalXp = taskXp + questXp
   const coins = getWalletBalance(walletTransactions)
   const { level, currentLevelXp, nextLevelXp } = getLevelFromXp(totalXp)
   const categoriesById = new Map(categories.map((category) => [category.id, category]))
@@ -95,17 +106,8 @@ export function getTodayTaskViews(
     }
   }
 
-  due.sort((left, right) => {
-    if (left.task.cadence === 'none' && right.task.cadence !== 'none') {
-      return 1
-    }
-
-    if (left.task.cadence !== 'none' && right.task.cadence === 'none') {
-      return -1
-    }
-
-    return left.task.sortOrder - right.task.sortOrder
-  })
+  // Persisted sort order should be the single source of truth so manual reorders stick.
+  due.sort((left, right) => left.task.sortOrder - right.task.sortOrder)
 
   completed.sort((left, right) => {
     const leftDate = left.completion?.completedAt ?? ''
@@ -114,4 +116,108 @@ export function getTodayTaskViews(
   })
 
   return { due, completed }
+}
+
+export function getGroupedTodayTaskViews(
+  tasks: Task[],
+  categories: Category[],
+  completions: CompletionRecord[],
+  date: Date,
+): TodayTaskGroup[] {
+  const todaySections = getTodayTaskViews(tasks, categories, completions, date)
+  const categoriesById = new Map(categories.map((category) => [category.id, category]))
+  const todayKey = toDateKey(date)
+  const groups: TodayTaskGroup[] = [
+    {
+      key: 'overdue',
+      title: 'Overdue carry-over',
+      items: [],
+    },
+    {
+      key: 'oneOff',
+      title: 'One-offs due today',
+      items: [],
+    },
+    {
+      key: 'quest',
+      title: 'Quest tasks',
+      items: [],
+    },
+    {
+      key: 'ritual',
+      title: 'Rituals & recurring',
+      items: [],
+    },
+    {
+      key: 'other',
+      title: 'Everything else',
+      items: [],
+    },
+  ]
+
+  for (const item of todaySections.due) {
+    const isOneOff = item.task.cadence === 'none'
+    const isOverdueOneOff = isOneOff && Boolean(item.task.dueDate && item.task.dueDate < todayKey)
+    const isQuestTask = Boolean(item.task.questId)
+    const isRitualOrRecurring = !isOneOff || isRitualTask(item.task, categoriesById)
+
+    if (isOverdueOneOff) {
+      groups[0].items.push(item)
+      continue
+    }
+
+    if (isOneOff) {
+      groups[1].items.push(item)
+      continue
+    }
+
+    if (isQuestTask) {
+      groups[2].items.push(item)
+      continue
+    }
+
+    if (isRitualOrRecurring) {
+      groups[3].items.push(item)
+      continue
+    }
+
+    groups[4].items.push(item)
+  }
+
+  return groups.filter((group) => group.items.length > 0)
+}
+
+export function getTaskIdsForTodayReorder(
+  tasks: Task[],
+  dueTaskIds: string[],
+  draggedTaskId: string,
+  targetTaskId: string,
+): string[] {
+  if (draggedTaskId === targetTaskId) {
+    return tasks.map((task) => task.id)
+  }
+
+  const reorderedDueTaskIds = [...dueTaskIds]
+  const fromIndex = reorderedDueTaskIds.indexOf(draggedTaskId)
+  const toIndex = reorderedDueTaskIds.indexOf(targetTaskId)
+
+  if (fromIndex === -1 || toIndex === -1) {
+    return tasks.map((task) => task.id)
+  }
+
+  const [movedTaskId] = reorderedDueTaskIds.splice(fromIndex, 1)
+  reorderedDueTaskIds.splice(toIndex, 0, movedTaskId)
+
+  const dueTaskIdSet = new Set(dueTaskIds)
+  let dueIndex = 0
+
+  return tasks.map((task) => {
+    if (!dueTaskIdSet.has(task.id)) {
+      return task.id
+    }
+
+    const reorderedTaskId = reorderedDueTaskIds[dueIndex]
+    dueIndex += 1
+    return reorderedTaskId ?? task.id
+  })
 }

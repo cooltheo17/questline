@@ -4,6 +4,7 @@ import { getThemeById, themes } from './themeRegistry'
 import type { AppTheme } from './types'
 
 const THEME_STORAGE_KEY = 'questline-theme'
+const THEME_STYLE_ELEMENT_ID = 'questline-theme-styles'
 
 interface ThemeContextValue {
   theme: AppTheme
@@ -20,6 +21,7 @@ function toCssToken(value: string): string {
 function applyTheme(theme: AppTheme): void {
   const root = document.documentElement
   root.style.colorScheme = theme.meta.colorScheme
+  root.dataset.theme = theme.id
 
   for (const [key, value] of Object.entries(theme.primitives.color)) {
     root.style.setProperty(`--theme-color-${toCssToken(key)}`, value)
@@ -53,6 +55,19 @@ function applyTheme(theme: AppTheme): void {
     for (const [key, value] of Object.entries(tokens)) {
       root.style.setProperty(`--theme-${toCssToken(group)}-${toCssToken(key)}`, value)
     }
+  }
+
+  const existingStyleElement = document.getElementById(THEME_STYLE_ELEMENT_ID)
+  if (theme.styles?.trim()) {
+    const styleElement = existingStyleElement ?? document.createElement('style')
+    styleElement.id = THEME_STYLE_ELEMENT_ID
+    styleElement.textContent = theme.styles
+
+    if (!existingStyleElement) {
+      document.head.appendChild(styleElement)
+    }
+  } else if (existingStyleElement) {
+    existingStyleElement.remove()
   }
 }
 

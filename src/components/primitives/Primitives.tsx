@@ -22,6 +22,9 @@ export function Button({
 }) {
   return (
     <button
+      data-slot="button"
+      data-size={size}
+      data-variant={variant}
       className={cx(
         styles.button,
         variant === 'primary'
@@ -48,8 +51,8 @@ export function Card({
   className,
 }: PropsWithChildren<{ className?: string }>) {
   return (
-    <div className={cx(styles.card, className)}>
-      <div className={styles.cardBody}>{children}</div>
+    <div data-slot="card" className={cx(styles.card, className)}>
+      <div data-slot="card-body" className={styles.cardBody}>{children}</div>
     </div>
   )
 }
@@ -73,7 +76,7 @@ export function Badge({
                 ? styles.badgeMist
                 : undefined
 
-  return <span className={cx(styles.badge, toneClass)}>{children}</span>
+  return <span data-slot="badge" data-tone={tone ?? 'default'} className={cx(styles.badge, toneClass)}>{children}</span>
 }
 
 export function Field({
@@ -82,7 +85,7 @@ export function Field({
 }: PropsWithChildren<{ label: string }>) {
   return (
     <label className={styles.field}>
-      <span className={styles.fieldLabel}>{label}</span>
+      <span data-slot="field-label" className={styles.fieldLabel}>{label}</span>
       {children}
     </label>
   )
@@ -90,13 +93,13 @@ export function Field({
 
 export const TextField = forwardRef<HTMLInputElement, ComponentPropsWithoutRef<'input'>>(
   function TextField({ className, ...props }, ref) {
-    return <input ref={ref} className={cx(styles.input, className)} {...props} />
+    return <input ref={ref} data-slot="input" className={cx(styles.input, className)} {...props} />
   },
 )
 
 export const Textarea = forwardRef<HTMLTextAreaElement, ComponentPropsWithoutRef<'textarea'>>(
   function Textarea({ className, ...props }, ref) {
-    return <textarea ref={ref} className={cx(styles.textarea, className)} {...props} />
+    return <textarea ref={ref} data-slot="textarea" className={cx(styles.textarea, className)} {...props} />
   },
 )
 
@@ -112,8 +115,9 @@ export function Checkbox({
   disabled?: boolean
 }) {
   return (
-    <label className={styles.checkboxRow}>
+    <label data-slot="checkbox-row" className={styles.checkboxRow}>
       <CheckboxPrimitive.Root
+        data-slot="checkbox"
         checked={checked}
         disabled={disabled}
         onCheckedChange={(value) => onCheckedChange(value === true)}
@@ -121,7 +125,7 @@ export function Checkbox({
       >
         <CheckboxPrimitive.Indicator>✓</CheckboxPrimitive.Indicator>
       </CheckboxPrimitive.Root>
-      <span className={styles.checkboxLabel}>{label}</span>
+      <span data-slot="checkbox-label" className={styles.checkboxLabel}>{label}</span>
     </label>
   )
 }
@@ -139,14 +143,14 @@ export function Select({
 }) {
   return (
     <SelectPrimitive.Root value={value} onValueChange={onValueChange}>
-      <SelectPrimitive.Trigger className={styles.selectTrigger} aria-label={placeholder}>
+      <SelectPrimitive.Trigger data-slot="select-trigger" className={styles.selectTrigger} aria-label={placeholder}>
         <SelectPrimitive.Value placeholder={placeholder} />
       </SelectPrimitive.Trigger>
       <SelectPrimitive.Portal>
-        <SelectPrimitive.Content className={styles.selectContent} position="popper">
+        <SelectPrimitive.Content data-slot="select-content" className={styles.selectContent} position="popper">
           <SelectPrimitive.Viewport>
             {options.map((option) => (
-              <SelectPrimitive.Item key={option.value} value={option.value} className={styles.selectItem}>
+              <SelectPrimitive.Item data-slot="select-item" key={option.value} value={option.value} className={styles.selectItem}>
                 <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
               </SelectPrimitive.Item>
             ))}
@@ -169,8 +173,9 @@ export function ProgressBar({
   const width = max === 0 ? 0 : Math.max(0, Math.min(100, (value / max) * 100))
 
   return (
-    <div className={styles.progressRail}>
+    <div data-slot="progress-rail" data-tone={tone} className={styles.progressRail}>
       <div
+        data-slot="progress-fill"
         className={[styles.progressFill, tone === 'daily' ? styles.progressFillDaily : ''].filter(Boolean).join(' ')}
         style={{ width: `${width}%` }}
       />
@@ -183,20 +188,25 @@ export function Dialog({
   onOpenChange,
   title,
   description,
+  contentClassName,
   children,
 }: PropsWithChildren<{
   open: boolean
   onOpenChange: (open: boolean) => void
   title: string
   description?: string
+  contentClassName?: string
 }>) {
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className={styles.dialogOverlay} />
-        <DialogPrimitive.Content className={styles.dialogContent}>
-          <div className={styles.dialogHeader}>
-            <DialogPrimitive.Title className={styles.dialogTitle}>{title}</DialogPrimitive.Title>
+        <DialogPrimitive.Overlay data-slot="dialog-overlay" className={styles.dialogOverlay} />
+        <DialogPrimitive.Content
+          data-slot="dialog-content"
+          className={cx(styles.dialogContent, contentClassName)}
+        >
+          <div data-slot="dialog-header" className={styles.dialogHeader}>
+            <DialogPrimitive.Title data-slot="dialog-title" className={styles.dialogTitle}>{title}</DialogPrimitive.Title>
             {description ? (
               <DialogPrimitive.Description className={styles.dialogDescription}>
                 {description}
@@ -225,10 +235,10 @@ export function Drawer({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className={styles.drawerOverlay} />
-        <DialogPrimitive.Content className={styles.drawerContent}>
-          <div className={styles.dialogHeader}>
-            <DialogPrimitive.Title className={styles.dialogTitle}>{title}</DialogPrimitive.Title>
+        <DialogPrimitive.Overlay data-slot="drawer-overlay" className={styles.drawerOverlay} />
+        <DialogPrimitive.Content data-slot="drawer-content" className={styles.drawerContent}>
+          <div data-slot="dialog-header" className={styles.dialogHeader}>
+            <DialogPrimitive.Title data-slot="dialog-title" className={styles.dialogTitle}>{title}</DialogPrimitive.Title>
             {description ? (
               <DialogPrimitive.Description className={styles.dialogDescription}>
                 {description}
@@ -253,10 +263,10 @@ export function Tabs({
   items: Array<{ label: string; value: string }>
 }>) {
   return (
-    <TabsPrimitive.Root className={styles.tabsRoot} value={value} onValueChange={onValueChange}>
-      <TabsPrimitive.List className={styles.tabsList}>
+    <TabsPrimitive.Root data-slot="tabs-root" className={styles.tabsRoot} value={value} onValueChange={onValueChange}>
+      <TabsPrimitive.List data-slot="tabs-list" className={styles.tabsList}>
         {items.map((item) => (
-          <TabsPrimitive.Trigger key={item.value} value={item.value} className={styles.tabsTrigger}>
+          <TabsPrimitive.Trigger data-slot="tabs-trigger" key={item.value} value={item.value} className={styles.tabsTrigger}>
             {item.label}
           </TabsPrimitive.Trigger>
         ))}
@@ -271,7 +281,7 @@ export function TabPanel({
   children,
 }: PropsWithChildren<{ value: string }>) {
   return (
-    <TabsPrimitive.Content value={value} forceMount className={styles.tabsContent}>
+    <TabsPrimitive.Content data-slot="tabs-content" value={value} forceMount className={styles.tabsContent}>
       {children}
     </TabsPrimitive.Content>
   )
@@ -281,7 +291,7 @@ export function ToastViewport({ children }: PropsWithChildren) {
   return (
     <ToastPrimitive.Provider swipeDirection="right">
       {children}
-      <ToastPrimitive.Viewport className={styles.toastViewport} />
+      <ToastPrimitive.Viewport data-slot="toast-viewport" className={styles.toastViewport} />
     </ToastPrimitive.Provider>
   )
 }
@@ -291,16 +301,44 @@ export function Toast({
   onOpenChange,
   title,
   description,
+  actionLabel,
+  onAction,
+  duration = 2200,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   title: string
   description: ReactNode
+  actionLabel?: string
+  onAction?: () => void
+  duration?: number
 }) {
   return (
-    <ToastPrimitive.Root open={open} onOpenChange={onOpenChange} duration={2200} className={styles.toastRoot}>
-      <ToastPrimitive.Title className={styles.toastTitle}>{title}</ToastPrimitive.Title>
-      <ToastPrimitive.Description className={styles.toastDescription}>{description}</ToastPrimitive.Description>
+    <ToastPrimitive.Root
+      data-slot="toast-root"
+      open={open}
+      onOpenChange={onOpenChange}
+      duration={duration}
+      className={styles.toastRoot}
+    >
+      <ToastPrimitive.Title data-slot="toast-title" className={styles.toastTitle}>{title}</ToastPrimitive.Title>
+      <div className={styles.toastBody}>
+        <ToastPrimitive.Description data-slot="toast-description" className={styles.toastDescription}>
+          {description}
+        </ToastPrimitive.Description>
+        {actionLabel && onAction ? (
+          <button
+            type="button"
+            className={styles.toastAction}
+            onClick={() => {
+              onAction()
+              onOpenChange(false)
+            }}
+          >
+            {actionLabel}
+          </button>
+        ) : null}
+      </div>
     </ToastPrimitive.Root>
   )
 }

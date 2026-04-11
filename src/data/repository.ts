@@ -2,18 +2,29 @@ import { db, DEFAULT_CATEGORY_ID } from './db'
 import { parseSnapshot } from './backup'
 import { getCompletionForDate, getOccurrenceKey } from '../domain/recurrence'
 import { getTaskReward, getWalletBalance } from '../domain/rewards'
+import type { BulkImportPlan } from '../domain/bulkAdd'
 import type {
   AppSnapshot,
   Category,
   CompletionRecord,
   CreateCategoryInput,
+  CreateQuestInput,
   CreateRewardInput,
   CreateTaskInput,
+  Quest,
   RewardItem,
   Task,
+  UpdateQuestInput,
   UpdateRewardInput,
   UpdateTaskInput,
 } from '../domain/types'
+
+export interface BulkImportCommit {
+  batchId: string
+  categoryIds: string[]
+  questIds: string[]
+  taskIds: string[]
+}
 
 function createId(): string {
   return crypto.randomUUID()
@@ -22,6 +33,24 @@ function createId(): string {
 function normalizeDueDate(value: string | undefined): string | undefined {
   const nextValue = value?.trim()
   return nextValue ? nextValue : undefined
+}
+
+function normalizeQuestId(value: string | undefined): string | undefined {
+  const nextValue = value?.trim()
+  return nextValue ? nextValue : undefined
+}
+
+function toCategoryName(categoryId: string): string {
+  const normalized = categoryId
+    .trim()
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+
+  if (!normalized) {
+    return 'New category'
+  }
+
+  return normalized.replace(/\b\w/g, (character) => character.toUpperCase())
 }
 
 function parseLocalDateKey(dateKey: string): Date {
@@ -104,6 +133,7 @@ export async function updateCategory(category: Category): Promise<void> {
 export async function createTask(input: CreateTaskInput): Promise<void> {
   const lastTask = await db.tasks.orderBy('sortOrder').last()
   const dueDate = normalizeDueDate(input.dueDate)
+  const questId = normalizeQuestId(input.questId)
 
   await db.tasks.add({
     id: createId(),
@@ -111,6 +141,7 @@ export async function createTask(input: CreateTaskInput): Promise<void> {
     notes: input.notes?.trim() || undefined,
     categoryIds: input.categoryIds.length ? input.categoryIds : [DEFAULT_CATEGORY_ID],
     dueDate,
+    questId,
     cadence: input.cadence,
     difficulty: input.difficulty,
     rewardOverride: input.rewardOverride,
@@ -130,6 +161,7 @@ export async function updateTask(input: UpdateTaskInput): Promise<void> {
   }
 
   const dueDate = normalizeDueDate(input.dueDate)
+  const questId = normalizeQuestId(input.questId)
 
   await db.tasks.put({
     ...current,
@@ -137,12 +169,197 @@ export async function updateTask(input: UpdateTaskInput): Promise<void> {
     notes: input.notes?.trim() || undefined,
     categoryIds: input.categoryIds.length ? input.categoryIds : [DEFAULT_CATEGORY_ID],
     dueDate,
+    questId,
     cadence: input.cadence,
     difficulty: input.difficulty,
     rewardOverride: input.rewardOverride,
     subtasks: toSubtasks(input.subtasks ?? []),
     active: input.active,
     anchorDate: dueDate ? toAnchorDate(dueDate) : current.anchorDate,
+  })
+}
+
+export async function createFromBulkImportPlan(plan: BulkImportPlan): Promise<BulkImportCommit> {
+  const batchId = createId()
+  const batchCreatedAt = new Date().toISOString()
+  const existingCategories = await db.categories.toArray()
+  const lastQuest = await db.quests.orderBy('sortOrder').last()
+  const lastTask = await db.tasks.orderBy('sortOrder').last()
+  let nextCategorySortOrder = existingCategories.reduce((highest, category) => Math.max(highest, category.sortOrder), -1)
+  let nextQuestSortOrder = lastQuest?.sortOrder ?? 0
+  let nextTaskSortOrder = lastTask?.sortOrder ?? 0
+  const questIdByKey = new Map<string, string>()
+  const existingCategoryIds = new Set(existingCategories.map((category) => category.id))
+  const categoriesToCreate = new Map<string, Category>()
+
+  for (const category of plan.categories) {
+    const normalizedCategoryId = category.id.trim()
+
+    if (!normalizedCategoryId || existingCategoryIds.has(normalizedCategoryId) || categoriesToCreate.has(normalizedCategoryId)) {
+      continue
+    }
+
+    nextCategorySortOrder += 1
+    categoriesToCreate.set(normalizedCategoryId, {
+      id: normalizedCategoryId,
+      name: category.input.name.trim(),
+      iconKey: 'spark',
+      colorKey: category.input.colorKey,
+      sortOrder: nextCategorySortOrder,
+      archived: false,
+      importBatchId: batchId,
+    })
+  }
+
+  for (const task of plan.tasks) {
+    for (const categoryId of task.input.categoryIds) {
+      const normalizedCategoryId = categoryId.trim()
+
+      if (!normalizedCategoryId || existingCategoryIds.has(normalizedCategoryId) || categoriesToCreate.has(normalizedCategoryId)) {
+        continue
+      }
+
+      nextCategorySortOrder += 1
+      categoriesToCreate.set(normalizedCategoryId, {
+        id: normalizedCategoryId,
+        name: toCategoryName(normalizedCategoryId),
+        iconKey: 'spark',
+        colorKey: 'slate',
+        sortOrder: nextCategorySortOrder,
+        archived: false,
+        importBatchId: batchId,
+      })
+    }
+  }
+
+  const questsToCreate = plan.quests.map((quest) => {
+    const id = createId()
+    questIdByKey.set(quest.key, id)
+    nextQuestSortOrder += 1
+
+    return {
+      id,
+      title: quest.input.title.trim(),
+      description: quest.input.description?.trim() || undefined,
+      imageUrl: quest.input.imageUrl?.trim() || undefined,
+      rewardXp: Math.max(0, quest.input.rewardXp),
+      rewardCoins: Math.max(0, quest.input.rewardCoins),
+      sortOrder: nextQuestSortOrder,
+      archived: false,
+      createdAt: batchCreatedAt,
+      importBatchId: batchId,
+    }
+  })
+
+  const tasksToCreate = plan.tasks.map(({ input, questRef }) => {
+    const dueDate = normalizeDueDate(input.dueDate)
+    const questId =
+      questRef?.kind === 'existing'
+        ? questRef.questId
+        : questRef?.kind === 'new'
+          ? questIdByKey.get(questRef.questKey)
+          : normalizeQuestId(input.questId)
+
+    nextTaskSortOrder += 1
+
+    return {
+      id: createId(),
+      title: input.title.trim(),
+      notes: input.notes?.trim() || undefined,
+      categoryIds: input.categoryIds.length ? input.categoryIds : [DEFAULT_CATEGORY_ID],
+      dueDate,
+      questId,
+      cadence: input.cadence,
+      difficulty: input.difficulty,
+      rewardOverride: input.rewardOverride,
+      subtasks: toSubtasks(input.subtasks ?? []),
+      active: true,
+      sortOrder: nextTaskSortOrder,
+      anchorDate: toAnchorDate(dueDate),
+      createdAt: batchCreatedAt,
+      importBatchId: batchId,
+    }
+  })
+
+  await db.transaction('rw', db.categories, db.quests, db.tasks, async () => {
+    if (categoriesToCreate.size > 0) {
+      await db.categories.bulkAdd([...categoriesToCreate.values()])
+    }
+
+    if (questsToCreate.length > 0) {
+      await db.quests.bulkAdd(questsToCreate)
+    }
+
+    if (tasksToCreate.length > 0) {
+      await db.tasks.bulkAdd(tasksToCreate)
+    }
+  })
+
+  return {
+    batchId,
+    categoryIds: [...categoriesToCreate.keys()],
+    questIds: questsToCreate.map((quest) => quest.id),
+    taskIds: tasksToCreate.map((task) => task.id),
+  }
+}
+
+export async function undoBulkImport(commit: BulkImportCommit): Promise<void> {
+  await deleteBulkImport(commit.batchId)
+}
+
+export async function deleteBulkImport(batchId: string): Promise<void> {
+  await db.transaction('rw', [db.categories, db.quests, db.tasks, db.completions, db.walletTransactions], async () => {
+    const [tasksInBatch, questsInBatch, categoriesInBatch] = await Promise.all([
+      db.tasks.where('importBatchId').equals(batchId).toArray(),
+      db.quests.where('importBatchId').equals(batchId).toArray(),
+      db.categories.where('importBatchId').equals(batchId).toArray(),
+    ])
+
+    const taskIds = tasksInBatch.map((task) => task.id)
+    const questIds = questsInBatch.map((quest) => quest.id)
+    const categoryIds = categoriesInBatch.map((category) => category.id)
+    const completions = taskIds.length
+      ? await db.completions.filter((completion) => taskIds.includes(completion.taskId)).toArray()
+      : []
+    const linkedCompletionIds = new Set(completions.map((completion) => completion.id))
+    const linkedTransactions = await db.walletTransactions
+      .filter(
+        (entry) =>
+          linkedCompletionIds.has(entry.sourceId) ||
+          (questIds.includes(entry.sourceId) && entry.type === 'quest_reward'),
+      )
+      .toArray()
+
+    if (taskIds.length > 0) {
+      await db.tasks.bulkDelete(taskIds)
+    }
+
+    if (completions.length > 0) {
+      await db.completions.bulkDelete(completions.map((completion) => completion.id))
+    }
+
+    if (questIds.length > 0) {
+      await db.quests.bulkDelete(questIds)
+      await db.tasks.where('questId').anyOf(questIds).modify((task) => {
+        delete task.questId
+      })
+    }
+
+    if (linkedTransactions.length > 0) {
+      await db.walletTransactions.bulkDelete(linkedTransactions.map((entry) => entry.id))
+    }
+
+    if (categoryIds.length > 0) {
+      const remainingTasks = await db.tasks.toArray()
+      const categoryIdsStillInUse = new Set(
+        remainingTasks.flatMap((task) => task.categoryIds).filter((categoryId) => categoryIds.includes(categoryId)),
+      )
+      const categoryIdsToDelete = categoryIds.filter((categoryId) => !categoryIdsStillInUse.has(categoryId))
+
+      if (categoryIdsToDelete.length > 0) {
+        await db.categories.bulkDelete(categoryIdsToDelete)
+      }
+    }
   })
 }
 
@@ -257,22 +474,94 @@ export async function updateReward(input: UpdateRewardInput): Promise<void> {
   })
 }
 
-export async function purchaseReward(reward: RewardItem): Promise<boolean> {
-  const balance = getWalletBalance(await db.walletTransactions.toArray())
+export async function createQuest(input: CreateQuestInput): Promise<void> {
+  const lastQuest = await db.quests.orderBy('sortOrder').last()
 
-  if (balance < reward.coinCost) {
-    return false
-  }
-
-  await db.walletTransactions.add({
+  await db.quests.add({
     id: createId(),
-    type: 'reward_purchase',
-    amount: -reward.coinCost,
-    sourceId: reward.id,
+    title: input.title.trim(),
+    description: input.description?.trim() || undefined,
+    imageUrl: input.imageUrl?.trim() || undefined,
+    rewardXp: Math.max(0, input.rewardXp),
+    rewardCoins: Math.max(0, input.rewardCoins),
+    sortOrder: (lastQuest?.sortOrder ?? 0) + 1,
+    archived: false,
     createdAt: new Date().toISOString(),
   })
+}
 
-  return true
+export async function updateQuest(input: UpdateQuestInput): Promise<void> {
+  const quest = await db.quests.get(input.id)
+
+  if (!quest) {
+    return
+  }
+
+  await db.quests.put({
+    ...quest,
+    title: input.title.trim(),
+    description: input.description?.trim() || undefined,
+    imageUrl: input.imageUrl?.trim() || undefined,
+    rewardXp: Math.max(0, input.rewardXp),
+    rewardCoins: Math.max(0, input.rewardCoins),
+    archived: input.archived,
+    completedAt: input.completedAt,
+  })
+}
+
+export async function completeQuest(quest: Quest, when = new Date()): Promise<void> {
+  await db.transaction('rw', db.quests, db.walletTransactions, async () => {
+    const current = await db.quests.get(quest.id)
+
+    if (!current || current.completedAt) {
+      return
+    }
+
+    await db.quests.update(current.id, { completedAt: when.toISOString() })
+
+    if (current.rewardCoins > 0) {
+      await db.walletTransactions.add({
+        id: createId(),
+        type: 'quest_reward',
+        amount: current.rewardCoins,
+        sourceId: current.id,
+        createdAt: when.toISOString(),
+      })
+    }
+  })
+}
+
+export async function purchaseReward(reward: RewardItem): Promise<boolean> {
+  return db.transaction('rw', db.rewards, db.walletTransactions, async () => {
+    const [currentReward, transactions] = await Promise.all([
+      db.rewards.get(reward.id),
+      db.walletTransactions.toArray(),
+    ])
+
+    if (!currentReward || currentReward.archived) {
+      return false
+    }
+
+    const balance = getWalletBalance(transactions)
+
+    if (balance < currentReward.coinCost) {
+      return false
+    }
+
+    await db.walletTransactions.add({
+      id: createId(),
+      type: 'reward_purchase',
+      amount: -currentReward.coinCost,
+      sourceId: currentReward.id,
+      createdAt: new Date().toISOString(),
+    })
+
+    if (!currentReward.repeatable) {
+      await db.rewards.update(currentReward.id, { archived: true })
+    }
+
+    return true
+  })
 }
 
 export async function reorderTasks(taskIds: string[]): Promise<void> {
@@ -296,7 +585,35 @@ export async function deleteCompletionRecord(completionId: string): Promise<void
 }
 
 export async function deleteWalletTransaction(transactionId: string): Promise<void> {
-  await db.walletTransactions.delete(transactionId)
+  await db.transaction('rw', db.walletTransactions, db.rewards, async () => {
+    const transaction = await db.walletTransactions.get(transactionId)
+
+    if (!transaction) {
+      return
+    }
+
+    await db.walletTransactions.delete(transactionId)
+
+    if (transaction.type !== 'reward_purchase') {
+      return
+    }
+
+    const reward = await db.rewards.get(transaction.sourceId)
+
+    if (!reward || reward.repeatable) {
+      return
+    }
+
+    const remainingPurchases = await db.walletTransactions
+      .where('sourceId')
+      .equals(reward.id)
+      .filter((entry) => entry.type === 'reward_purchase')
+      .count()
+
+    if (remainingPurchases === 0) {
+      await db.rewards.update(reward.id, { archived: false })
+    }
+  })
 }
 
 export async function deleteTask(taskId: string): Promise<void> {
@@ -320,14 +637,31 @@ export async function deleteReward(rewardId: string): Promise<void> {
   })
 }
 
+export async function deleteQuest(questId: string): Promise<void> {
+  await db.transaction('rw', db.quests, db.tasks, db.walletTransactions, async () => {
+    await db.quests.delete(questId)
+    await db.tasks.where('questId').equals(questId).modify((task) => {
+      delete task.questId
+    })
+
+    const transactions = await db.walletTransactions
+      .where('sourceId')
+      .equals(questId)
+      .filter((entry) => entry.type === 'quest_reward')
+      .toArray()
+    await db.walletTransactions.bulkDelete(transactions.map((entry) => entry.id))
+  })
+}
+
 export async function replaceSnapshot(snapshot: AppSnapshot): Promise<void> {
   await db.transaction(
     'rw',
-    [db.categories, db.tasks, db.completions, db.rewards, db.walletTransactions],
+    [db.categories, db.tasks, db.quests, db.completions, db.rewards, db.walletTransactions],
     async () => {
       await Promise.all([
         db.categories.clear(),
         db.tasks.clear(),
+        db.quests.clear(),
         db.completions.clear(),
         db.rewards.clear(),
         db.walletTransactions.clear(),
@@ -335,6 +669,7 @@ export async function replaceSnapshot(snapshot: AppSnapshot): Promise<void> {
 
       await db.categories.bulkAdd(snapshot.categories)
       await db.tasks.bulkAdd(snapshot.tasks)
+      await db.quests.bulkAdd(snapshot.quests)
       await db.completions.bulkAdd(snapshot.completions)
       await db.rewards.bulkAdd(snapshot.rewards)
       await db.walletTransactions.bulkAdd(snapshot.walletTransactions)
@@ -351,11 +686,12 @@ export async function importSnapshot(raw: string): Promise<void> {
 export async function resetAllData(): Promise<void> {
   await db.transaction(
     'rw',
-    [db.categories, db.tasks, db.completions, db.rewards, db.walletTransactions],
+    [db.categories, db.tasks, db.quests, db.completions, db.rewards, db.walletTransactions],
     async () => {
       await Promise.all([
         db.categories.clear(),
         db.tasks.clear(),
+        db.quests.clear(),
         db.completions.clear(),
         db.rewards.clear(),
         db.walletTransactions.clear(),

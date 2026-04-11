@@ -107,7 +107,7 @@ Current automated coverage includes:
 - Tasks can have multiple tags.
 - `Schedule` uses due date and cadence rules:
   - `Tomorrow`: tasks due tomorrow
-  - `Upcoming`: future-dated tasks; daily tasks are excluded
+  - `Future`: future-dated tasks after tomorrow; daily tasks are excluded
   - `Overdue`: one-off tasks with a due date in the past
 - Ritual/habit streaks come from tasks tagged with a category such as `Rituals` or `Habit`.
 - The bundled theme is original-IP-inspired rather than based on protected third-party assets or names.

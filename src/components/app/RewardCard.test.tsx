@@ -15,7 +15,7 @@ describe('RewardCard', () => {
           createdAt: '2026-03-18T08:00:00.000Z',
         }}
         canBuy={false}
-        onBuy={vi.fn().mockResolvedValue(undefined)}
+        onBuy={vi.fn().mockResolvedValue(false)}
       />,
     )
 

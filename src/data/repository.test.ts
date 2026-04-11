@@ -1,14 +1,21 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { parseBulkImportInput } from '../domain/bulkAdd'
 import { db } from './db'
 import {
   completeTask,
+  completeQuest,
+  createFromBulkImportPlan,
   createTask,
+  createQuest,
+  deleteBulkImport,
   deleteCompletionRecord,
+  deleteQuest,
   deleteWalletTransaction,
   ensureSeedData,
   purchaseReward,
   createReward,
   toggleSubtask,
+  undoBulkImport,
 } from './repository'
 
 describe('repository flows', () => {
@@ -106,5 +113,222 @@ describe('repository flows', () => {
     await deleteWalletTransaction(purchase!.id)
 
     expect(await db.walletTransactions.where('type').equals('reward_purchase').count()).toBe(0)
+  })
+
+  it('archives a non-repeatable reward after purchase', async () => {
+    await createReward({
+      title: 'Coffee',
+      coinCost: 2,
+      repeatable: false,
+    })
+    await db.walletTransactions.add({
+      id: 'seed-coins',
+      type: 'task_reward',
+      amount: 3,
+      sourceId: 'seed',
+      createdAt: new Date().toISOString(),
+    })
+
+    const reward = await db.rewards.toCollection().first()
+    const purchased = await purchaseReward(reward!)
+
+    expect(purchased).toBe(true)
+    expect((await db.rewards.get(reward!.id))?.archived).toBe(true)
+  })
+
+  it('restores a non-repeatable reward when its purchase is removed', async () => {
+    await createReward({
+      title: 'Coffee',
+      coinCost: 2,
+      repeatable: false,
+    })
+    await db.walletTransactions.add({
+      id: 'seed-coins',
+      type: 'task_reward',
+      amount: 3,
+      sourceId: 'seed',
+      createdAt: new Date().toISOString(),
+    })
+
+    const reward = await db.rewards.toCollection().first()
+    await purchaseReward(reward!)
+    const purchase = await db.walletTransactions.where('type').equals('reward_purchase').first()
+
+    await deleteWalletTransaction(purchase!.id)
+
+    expect((await db.rewards.get(reward!.id))?.archived).toBe(false)
+  })
+
+  it('awards quest rewards once per quest', async () => {
+    await createQuest({
+      title: 'Journey to Summit',
+      description: '',
+      imageUrl: '',
+      rewardXp: 200,
+      rewardCoins: 40,
+    })
+
+    const quest = await db.quests.toCollection().first()
+    expect(quest).toBeTruthy()
+
+    await completeQuest(quest!)
+    await completeQuest(quest!)
+
+    expect(await db.walletTransactions.where('type').equals('quest_reward').count()).toBe(1)
+    const stored = await db.quests.get(quest!.id)
+    expect(stored?.completedAt).toBeTruthy()
+  })
+
+  it('deletes a quest, removes its reward history, and unlinks its tasks', async () => {
+    await createQuest({
+      title: 'Journey to Summit',
+      description: '',
+      imageUrl: '',
+      rewardXp: 200,
+      rewardCoins: 40,
+    })
+
+    const quest = await db.quests.toCollection().first()
+    expect(quest).toBeTruthy()
+
+    await createTask({
+      title: 'Climb the first ridge',
+      categoryIds: ['inbox'],
+      questId: quest!.id,
+      cadence: 'none',
+      difficulty: 'small',
+    })
+
+    await completeQuest(quest!)
+    await deleteQuest(quest!.id)
+
+    expect(await db.quests.get(quest!.id)).toBeUndefined()
+    expect(await db.walletTransactions.where('sourceId').equals(quest!.id).count()).toBe(0)
+
+    const task = await db.tasks.toCollection().first()
+    expect(task?.questId).toBeUndefined()
+  })
+
+  it('creates quests and tasks from a bulk import plan', async () => {
+    const plan = parseBulkImportInput(
+      JSON.stringify({
+        categories: [
+          {
+            id: 'house-admin',
+            name: 'House Admin',
+            colorKey: 'blush',
+          },
+        ],
+        quests: [
+          {
+            title: 'Apartment reset',
+            rewardXp: 120,
+            rewardCoins: 24,
+            tasks: [
+              {
+                title: 'Clear the sink',
+                categoryIds: ['inbox'],
+              },
+              {
+                title: 'Refill prescriptions',
+                categoryIds: ['health', 'house-admin'],
+                subtasks: ['Check repeat order', 'Collect medication'],
+              },
+            ],
+          },
+        ],
+      }),
+      {
+        categories: await db.categories.toArray(),
+        quests: await db.quests.toArray(),
+      },
+    )
+
+    const commit = await createFromBulkImportPlan(plan)
+
+    const createdQuest = (await db.quests.toArray()).find((quest) => quest.title === 'Apartment reset')
+    const createdTasks = await db.tasks.orderBy('sortOrder').toArray()
+    const createdCategory = await db.categories.get('house-admin')
+
+    expect(createdQuest).toBeTruthy()
+    expect(createdTasks).toHaveLength(2)
+    expect(createdTasks.every((task) => task.questId === createdQuest?.id)).toBe(true)
+    expect(createdTasks[1]?.subtasks).toHaveLength(2)
+    expect(createdCategory).toMatchObject({
+      id: 'house-admin',
+      name: 'House Admin',
+      iconKey: 'spark',
+      colorKey: 'blush',
+      archived: false,
+    })
+    expect(commit.taskIds).toHaveLength(2)
+    expect(commit.questIds).toHaveLength(1)
+    expect(commit.categoryIds).toContain('house-admin')
+    expect(commit.batchId).toBeTruthy()
+  })
+
+  it('undoes the last bulk import and cleans up created categories', async () => {
+    const plan = parseBulkImportInput(
+      JSON.stringify({
+        categories: [
+          {
+            id: 'summer-training',
+            name: 'Summer Training',
+            colorKey: 'sage',
+          },
+        ],
+        quests: [
+          {
+            title: 'Summer body',
+            tasks: [
+              {
+                title: 'Plan week one',
+                categoryIds: ['summer-training'],
+              },
+            ],
+          },
+        ],
+      }),
+      {
+        categories: await db.categories.toArray(),
+        quests: await db.quests.toArray(),
+      },
+    )
+
+    const commit = await createFromBulkImportPlan(plan)
+
+    await undoBulkImport(commit)
+
+    expect(await db.tasks.bulkGet(commit.taskIds)).toEqual([undefined])
+    expect(await db.quests.bulkGet(commit.questIds)).toEqual([undefined])
+    expect(await db.categories.get('summer-training')).toBeUndefined()
+  })
+
+  it('deletes a bulk import by batch id', async () => {
+    const plan = parseBulkImportInput(
+      JSON.stringify({
+        quests: [
+          {
+            title: 'Delete me',
+            tasks: [
+              {
+                title: 'Imported task',
+                categoryIds: ['inbox'],
+              },
+            ],
+          },
+        ],
+      }),
+      {
+        categories: await db.categories.toArray(),
+        quests: await db.quests.toArray(),
+      },
+    )
+
+    const commit = await createFromBulkImportPlan(plan)
+    await deleteBulkImport(commit.batchId)
+
+    expect(await db.tasks.bulkGet(commit.taskIds)).toEqual([undefined])
+    expect(await db.quests.bulkGet(commit.questIds)).toEqual([undefined])
   })
 })

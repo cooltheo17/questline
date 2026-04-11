@@ -1,9 +1,13 @@
 .button {
   border: 1px solid transparent;
-  border-radius: var(--theme-radius-pill);
-  padding: 0.8rem 1.1rem;
+  border-radius: var(--theme-radius-sm);
+  padding: 0.72rem 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.15;
   font-weight: 600;
-  letter-spacing: 0.02em;
   transition:
     border-color var(--theme-motion-fast),
     box-shadow var(--theme-motion-fast),
@@ -19,7 +23,7 @@
 }
 
 .button:hover {
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--theme-semantic-text-primary) 8%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-semantic-text-primary) 8%, transparent);
 }
 
 .button:disabled {
@@ -31,10 +35,11 @@
 .buttonPrimary {
   background: var(--theme-button-primary-bg);
   color: var(--theme-button-primary-text);
+  border-color: color-mix(in srgb, var(--theme-button-primary-bg) 78%, black 6%);
 }
 
 .buttonPrimary:hover {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-semantic-accent) 24%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-semantic-accent) 18%, transparent);
 }
 
 .buttonSecondary {
@@ -45,7 +50,7 @@
 
 .buttonSecondary:hover {
   border-color: var(--theme-semantic-accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-semantic-accent) 16%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-semantic-accent) 12%, transparent);
 }
 
 .buttonDanger {
@@ -56,12 +61,12 @@
 
 .buttonDanger:hover {
   border-color: color-mix(in srgb, var(--theme-semantic-danger) 54%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-semantic-danger) 16%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-semantic-danger) 12%, transparent);
 }
 
 .iconButton {
-  inline-size: 2.6rem;
-  block-size: 2.6rem;
+  inline-size: 2.35rem;
+  block-size: 2.35rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -75,8 +80,8 @@
 
 .fieldLabel {
   color: var(--theme-semantic-text-secondary);
-  font-size: 0.88rem;
-  font-weight: 600;
+  font-size: 0.84rem;
+  font-weight: 700;
 }
 
 .input,
@@ -86,8 +91,8 @@
   border: 1px solid var(--theme-input-border);
   background: var(--theme-input-background);
   color: var(--theme-input-text);
-  border-radius: var(--theme-radius-md);
-  padding: 0.82rem 0.95rem;
+  border-radius: var(--theme-radius-sm);
+  padding: 0.78rem 0.9rem;
   outline: none;
   transition:
     border-color var(--theme-motion-fast),
@@ -103,13 +108,13 @@
 .textarea:focus,
 .selectTrigger:focus {
   border-color: var(--theme-semantic-accent);
-  box-shadow: 0 0 0 4px var(--theme-input-focus-ring);
+  box-shadow: 0 0 0 3px var(--theme-input-focus-ring);
 }
 
 .input[aria-invalid='true'],
 .textarea[aria-invalid='true'] {
   border-color: var(--theme-semantic-danger);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--theme-semantic-danger) 16%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-semantic-danger) 16%, transparent);
 }
 
 .textarea {
@@ -119,24 +124,25 @@
 
 .card {
   border: 1px solid var(--theme-semantic-border-subtle);
-  border-radius: var(--theme-radius-lg);
+  border-radius: var(--theme-radius-md);
   background: var(--theme-semantic-surface-raised);
   box-shadow: var(--theme-shadow-card);
 }
 
 .cardBody {
-  padding: 1.2rem;
+  padding: 1rem;
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  border-radius: var(--theme-radius-pill);
-  padding: 0.28rem 0.7rem;
+  border-radius: var(--theme-radius-sm);
+  padding: 0.26rem 0.55rem;
   background: color-mix(in srgb, var(--theme-semantic-accent) 12%, transparent);
   color: var(--theme-semantic-text-secondary);
-  font-size: 0.82rem;
+  border: 1px solid color-mix(in srgb, var(--theme-semantic-border-subtle) 80%, transparent);
+  font-size: 0.78rem;
   font-weight: 600;
 }
 
@@ -172,9 +178,9 @@
 
 .progressRail {
   overflow: hidden;
-  border-radius: var(--theme-radius-pill);
+  border-radius: var(--theme-radius-sm);
   background: color-mix(in srgb, var(--theme-semantic-accent) 14%, transparent);
-  block-size: 0.8rem;
+  block-size: 0.72rem;
 }
 
 .progressFill {
@@ -185,11 +191,7 @@
 }
 
 .progressFillDaily {
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--theme-semantic-success) 70%, var(--theme-semantic-surface-raised)) 0%,
-    var(--theme-semantic-success) 100%
-  );
+  background: color-mix(in srgb, var(--theme-semantic-success) 82%, var(--theme-semantic-surface-raised));
 }
 
 .checkboxRow {
@@ -201,7 +203,7 @@
 .checkbox {
   inline-size: 1.2rem;
   block-size: 1.2rem;
-  border-radius: 0.32rem;
+  border-radius: 0.24rem;
   border: 1px solid var(--theme-semantic-border-subtle);
   background: var(--theme-semantic-surface-raised);
   display: inline-flex;
@@ -218,7 +220,7 @@
   overflow: hidden;
   background: var(--theme-semantic-surface-raised);
   border: 1px solid var(--theme-semantic-border-subtle);
-  border-radius: var(--theme-radius-md);
+  border-radius: var(--theme-radius-sm);
   box-shadow: var(--theme-shadow-lift);
 }
 
@@ -243,31 +245,33 @@
 
 .tabsList {
   display: flex;
-  gap: 0.5rem;
+  gap: 1rem;
   flex-wrap: wrap;
+  border-bottom: 1px solid color-mix(in srgb, var(--theme-semantic-border-subtle) 78%, transparent);
 }
 
 .tabsTrigger {
-  border: 1px solid var(--theme-semantic-border-subtle);
-  border-radius: var(--theme-radius-pill);
-  background: color-mix(in srgb, var(--theme-semantic-surface-raised) 76%, transparent);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
   color: var(--theme-semantic-text-secondary);
-  padding: 0.65rem 0.95rem;
+  padding: 0.65rem 0 0.55rem;
   cursor: pointer;
   transition:
     border-color var(--theme-motion-fast),
-    box-shadow var(--theme-motion-fast),
     color var(--theme-motion-fast);
 }
 
 .tabsTrigger:hover {
-  border-color: var(--theme-semantic-accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-semantic-accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--theme-semantic-accent) 58%, transparent);
+  box-shadow: none;
 }
 
 .tabsTrigger[data-state='active'] {
-  background: var(--theme-button-primary-bg);
-  color: var(--theme-button-primary-text);
+  background: transparent;
+  color: var(--theme-semantic-text-primary);
+  border-color: var(--theme-semantic-accent);
 }
 
 .dialogOverlay,
@@ -281,7 +285,7 @@
 .drawerContent {
   position: fixed;
   background: var(--theme-semantic-surface-raised);
-  border-radius: var(--theme-radius-lg);
+  border-radius: var(--theme-radius-md);
   border: 1px solid var(--theme-semantic-border-subtle);
   box-shadow: var(--theme-shadow-card);
   padding: 1.2rem;
@@ -289,14 +293,18 @@
 
 .dialogContent {
   inline-size: min(42rem, calc(100vw - 2rem));
+  max-block-size: calc(100vh - 2rem);
   inset: 50% auto auto 50%;
   transform: translate(-50%, -50%);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
 }
 
 .drawerContent {
   inset: 0 0 0 auto;
   inline-size: min(30rem, 100vw);
-  border-radius: var(--theme-radius-lg) 0 0 var(--theme-radius-lg);
+  border-radius: 0;
 }
 
 .dialogHeader {
@@ -331,7 +339,7 @@
   background: var(--theme-semantic-surface-raised);
   color: var(--theme-semantic-text-primary);
   border: 1px solid var(--theme-semantic-border-subtle);
-  border-radius: var(--theme-radius-md);
+  border-radius: var(--theme-radius-sm);
   box-shadow: var(--theme-shadow-lift);
   padding: 0.95rem 1rem;
   transform-origin: bottom right;
@@ -366,6 +374,27 @@
 
 .toastDescription {
   color: var(--theme-semantic-text-secondary);
+}
+
+.toastBody {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.9rem;
+}
+
+.toastAction {
+  border: 0;
+  background: transparent;
+  color: var(--theme-semantic-accent);
+  font: inherit;
+  font-weight: 700;
+  padding: 0;
+  cursor: pointer;
+}
+
+.toastAction:hover {
+  text-decoration: underline;
 }
 
 @keyframes toastEnter {

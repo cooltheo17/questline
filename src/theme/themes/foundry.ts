@@ -1,8 +1,11 @@
-import { createIconSvg } from '../svg'
+import {
+  createIconSvg,
+  createThemedSvgAsset,
+} from '../svg'
 import type { AppTheme } from '../types'
-import chooseHero from '../../assets/undraw_choose_5kz4.svg'
-import emptyStreet from '../../assets/undraw_empty-street_3ogh.svg'
-import profileAvatar from '../../assets/undraw_friendly-guy-avatar_dqp5.svg'
+import chooseHeroSvg from '../../assets/undraw_choose_5kz4.svg?raw'
+import emptyStreetSvg from '../../assets/undraw_empty-street_3ogh.svg?raw'
+import profileAvatarSvg from '../../assets/undraw_friendly-guy-avatar_dqp5.svg?raw'
 
 export const foundryTheme: AppTheme = {
   id: 'foundry',
@@ -104,14 +107,25 @@ export const foundryTheme: AppTheme = {
     },
   },
   assets: {
-    hero: chooseHero,
-    emptyState: emptyStreet,
+    hero: createThemedSvgAsset(chooseHeroSvg, {
+      '#e6e6e6': '#31404d',
+      '#5f7286': '#7d95ad',
+    }),
+    emptyState: createThemedSvgAsset(emptyStreetSvg, {
+      '#e6e6e6': '#2a3743',
+      '#3e556d': '#7d95ad',
+      '#6c8876': '#769180',
+    }),
     levelBadge: createIconSvg(
       'M32 6 46 14v16c0 12-8 22-14 28-6-6-14-16-14-28V14L32 6Zm0 12 4 8 9 1-7 6 2 9-8-5-8 5 2-9-7-6 9-1 4-8Z',
       '#b99860',
       '#90a8bc',
     ),
-    profileAvatar,
+    profileAvatar: createThemedSvgAsset(profileAvatarSvg, {
+      '#f8f6f1': '#121920',
+      '#8a96a2': '#31404d',
+      '#5f7286': '#7d95ad',
+    }),
     iconSet: {
       task: createIconSvg('M15 32l10 10 24-24', '#84a58f', '#84a58f'),
       coins: createIconSvg(

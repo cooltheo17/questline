@@ -1,3 +1,5 @@
+import { motion } from 'framer-motion'
+import { CheckCircleIcon } from '@phosphor-icons/react/dist/csr/CheckCircle'
 import { CoinsIcon } from '@phosphor-icons/react/dist/csr/Coins'
 import { GiftIcon } from '@phosphor-icons/react/dist/csr/Gift'
 import { Badge, Button, Card } from '../primitives/Primitives'
@@ -7,33 +9,66 @@ import styles from './Shared.module.css'
 export function RewardCard({
   reward,
   canBuy,
+  purchaseState = 'idle',
   onBuy,
 }: {
   reward: RewardItem
   canBuy: boolean
-  onBuy: () => Promise<void>
+  purchaseState?: 'idle' | 'buying' | 'purchased'
+  onBuy: () => Promise<boolean>
 }) {
+  const isBusy = purchaseState === 'buying'
+  const isPurchased = purchaseState === 'purchased'
+
   return (
-    <Card>
-      <div className={styles.panel}>
-        <div className={styles.sectionTitle}>
+    <motion.article
+      layout
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.985, y: -6 }}
+      className={styles.rewardCardShell}
+    >
+      <Card className={isPurchased ? styles.rewardCardPurchased : undefined}>
+      <div data-slot="reward-card" className={styles.panel}>
+        <div data-slot="section-title" className={styles.sectionTitle}>
           <div>
-            <h3 className={styles.heading}>{reward.title}</h3>
-            {reward.notes ? <p className={styles.muted}>{reward.notes}</p> : null}
+            <h3 data-slot="section-heading" className={styles.heading}>{reward.title}</h3>
+            {reward.notes ? <p data-slot="muted-text" className={styles.muted}>{reward.notes}</p> : null}
           </div>
-          <Badge>
-            <span className={styles.inlineLabel}>
-              <CoinsIcon aria-hidden="true" size={15} weight="duotone" />
-              <span>{reward.coinCost} coins</span>
-            </span>
-          </Badge>
+          <div className={styles.badgeRow}>
+            <Badge>
+              <span className={styles.inlineLabel}>
+                <CoinsIcon aria-hidden="true" size={15} weight="duotone" />
+                <span>{reward.coinCost} coins</span>
+              </span>
+            </Badge>
+            <Badge tone={reward.repeatable ? 'slate' : 'sage'}>
+              {reward.repeatable ? 'Repeatable' : 'One-time'}
+            </Badge>
+          </div>
         </div>
 
-        <div className={styles.actions}>
-          <Button disabled={!canBuy} onClick={() => void onBuy()}>
+        <div data-slot="section-actions" className={styles.actions}>
+          <Button
+            disabled={!canBuy || isBusy || isPurchased}
+            variant={isPurchased ? 'secondary' : 'primary'}
+            onClick={() => void onBuy()}
+          >
             <span className={styles.inlineLabel}>
-              <GiftIcon aria-hidden="true" size={16} weight="duotone" />
-              <span>{canBuy ? 'Buy reward' : 'Need more coins'}</span>
+              {isPurchased ? (
+                <CheckCircleIcon aria-hidden="true" size={16} weight="duotone" />
+              ) : (
+                <GiftIcon aria-hidden="true" size={16} weight="duotone" />
+              )}
+              <span>
+                {isPurchased
+                  ? 'Purchased'
+                  : isBusy
+                    ? 'Buying...'
+                    : canBuy
+                      ? 'Buy reward'
+                      : 'Need more coins'}
+              </span>
             </span>
           </Button>
           {reward.link ? (
@@ -46,7 +81,13 @@ export function RewardCard({
             </Button>
           ) : null}
         </div>
+        {isPurchased ? (
+          <p data-slot="muted-text" className={styles.rewardStatus}>
+            {reward.repeatable ? 'Purchase logged. This reward is still available.' : 'Purchase logged. Leaving the shop.'}
+          </p>
+        ) : null}
       </div>
-    </Card>
+      </Card>
+    </motion.article>
   )
 }

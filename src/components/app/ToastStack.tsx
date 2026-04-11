@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Toast, ToastViewport } from '../primitives/Primitives'
-import { useUiStore } from '../../state/uiStore'
+import { useUiStore, type AppToast } from '../../state/uiStore'
 
 export function ToastStack() {
   const toasts = useUiStore((state) => state.toasts)
@@ -19,7 +19,7 @@ function ToastItem({
   toast,
   onDismiss,
 }: {
-  toast: { id: string; title: string; xp: number; coins: number }
+  toast: AppToast
   onDismiss: (id: string) => void
 }) {
   const [open, setOpen] = useState(true)
@@ -46,7 +46,10 @@ function ToastItem({
         }
       }}
       title={toast.title}
-      description={`${toast.xp} XP and ${toast.coins} coins secured.`}
+      description={toast.description}
+      actionLabel={toast.actionLabel}
+      onAction={toast.onAction}
+      duration={toast.duration}
     />
   )
 }

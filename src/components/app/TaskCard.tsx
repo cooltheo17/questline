@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
-import type { ReactNode } from 'react'
+import { CoinsIcon } from '@phosphor-icons/react/dist/csr/Coins'
+import type { DragEvent as ReactDragEvent, ReactNode } from 'react'
 import { Badge, Button, Checkbox } from '../primitives/Primitives'
 import { getCategoryTone } from '../../domain/categories'
 import { getTaskReward } from '../../domain/rewards'
@@ -13,6 +14,7 @@ export function TaskCard({
   categories,
   completion,
   isCompleted,
+  readOnly,
   onComplete,
   onToggleSubtask,
   actionSlot,
@@ -27,6 +29,7 @@ export function TaskCard({
   categories: Category[]
   completion?: CompletionRecord
   isCompleted: boolean
+  readOnly?: boolean
   onComplete: () => Promise<void>
   onToggleSubtask: (subtaskId: string) => Promise<void>
   actionSlot?: ReactNode
@@ -38,28 +41,52 @@ export function TaskCard({
   onDrop?: () => void
 }) {
   const reward = getTaskReward(task)
+  const isReadOnly = Boolean(readOnly)
   const completedIds = new Set(completion?.completedSubtaskIds ?? [])
 
   return (
     <motion.article
+      data-slot="task-card"
+      data-completed={isCompleted}
+      data-draggable={Boolean(draggable)}
+      data-drag-active={Boolean(dragActive)}
       layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.98 }}
       draggable={draggable}
-      onDragStart={onDragStart}
+      onDragStart={(event) => {
+        if (draggable) {
+          const dragEvent = event as unknown as ReactDragEvent<HTMLElement>
+          const dataTransfer = dragEvent.dataTransfer
+          if (dataTransfer) {
+            dataTransfer.effectAllowed = 'move'
+            dataTransfer.setData('text/plain', task.id)
+          }
+        }
+        onDragStart?.()
+      }}
       onDragEnd={onDragEnd}
       onDragOver={(event) => {
-        if (onDragOver) {
-          event.preventDefault()
-          onDragOver()
+        if (!draggable) {
+          return
         }
+
+        event.preventDefault()
+        const dragEvent = event as unknown as ReactDragEvent<HTMLElement>
+        const dataTransfer = dragEvent.dataTransfer
+        if (dataTransfer) {
+          dataTransfer.dropEffect = 'move'
+        }
+        onDragOver?.()
       }}
       onDrop={(event) => {
-        if (onDrop) {
-          event.preventDefault()
-          onDrop()
+        if (!draggable) {
+          return
         }
+
+        event.preventDefault()
+        onDrop?.()
       }}
       className={[
         styles.task,
@@ -70,12 +97,12 @@ export function TaskCard({
         .filter(Boolean)
         .join(' ')}
     >
-      <div className={styles.row}>
-        <div className={styles.titleWrap}>
-          <div className={styles.title}>{task.title}</div>
-          {task.notes ? <div className={styles.notes}>{task.notes}</div> : null}
+      <div data-slot="task-row" className={styles.row}>
+        <div data-slot="task-title-wrap" className={styles.titleWrap}>
+          <div data-slot="task-title" className={styles.title}>{task.title}</div>
+          {task.notes ? <div data-slot="task-notes" className={styles.notes}>{task.notes}</div> : null}
         </div>
-        <div className={styles.tagList}>
+        <div data-slot="task-tag-list" className={styles.tagList}>
           {categories.map((category) => (
             <Badge key={category.id} tone={getCategoryTone(category.colorKey)}>
               {category.name}
@@ -85,13 +112,16 @@ export function TaskCard({
       </div>
 
       {task.subtasks.length ? (
-        <div className={styles.subtasks}>
+        <div data-slot="task-subtasks" className={styles.subtasks}>
           {task.subtasks.map((subtask) => (
             <Checkbox
               key={subtask.id}
               checked={completedIds.has(subtask.id)}
-              disabled={isCompleted}
+              disabled={isCompleted || isReadOnly}
               onCheckedChange={() => {
+                if (isReadOnly) {
+                  return
+                }
                 void onToggleSubtask(subtask.id)
               }}
               label={subtask.title}
@@ -100,17 +130,25 @@ export function TaskCard({
         </div>
       ) : null}
 
-      <div className={styles.footer}>
-        <div className={styles.badges}>
+      <div data-slot="task-footer" className={styles.footer}>
+        <div data-slot="task-badges" className={styles.badges}>
           <Badge tone="brass">
-            {reward.xp} XP · {reward.coins} coins
+            <span className={sharedStyles.inlineLabel}>
+              <span>{reward.xp} XP · {reward.coins}</span>
+              <CoinsIcon aria-hidden="true" size={15} weight="duotone" />
+            </span>
           </Badge>
           <Badge tone="slate">{task.cadence === 'none' ? 'One-off' : task.cadence}</Badge>
         </div>
         {actionSlot ? (
           actionSlot
         ) : task.subtasks.length === 0 ? (
-          <Button disabled={isCompleted} onClick={() => void onComplete()}>
+          <Button disabled={isCompleted || isReadOnly} onClick={() => {
+            if (isReadOnly) {
+              return
+            }
+            void onComplete()
+          }}>
             {isCompleted ? (
               'Claimed'
             ) : (

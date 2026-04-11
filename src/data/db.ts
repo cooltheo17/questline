@@ -1,9 +1,10 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Category, CompletionRecord, RewardItem, Task, WalletTransaction } from '../domain/types'
+import type { Category, CompletionRecord, Quest, RewardItem, Task, WalletTransaction } from '../domain/types'
 
 class TodoDatabase extends Dexie {
   categories!: EntityTable<Category, 'id'>
   tasks!: EntityTable<Task, 'id'>
+  quests!: EntityTable<Quest, 'id'>
   completions!: EntityTable<CompletionRecord, 'id'>
   rewards!: EntityTable<RewardItem, 'id'>
   walletTransactions!: EntityTable<WalletTransaction, 'id'>
@@ -42,6 +43,24 @@ class TodoDatabase extends Dexie {
             delete task.categoryId
           }),
       )
+
+    this.version(3).stores({
+      categories: '&id, sortOrder, archived',
+      tasks: '&id, *categoryIds, questId, cadence, active, sortOrder, createdAt, archivedAt',
+      quests: '&id, sortOrder, archived, completedAt',
+      completions: '&id, taskId, occurrenceKey, completedAt',
+      rewards: '&id, archived, createdAt',
+      walletTransactions: '&id, sourceId, type, createdAt',
+    })
+
+    this.version(4).stores({
+      categories: '&id, sortOrder, archived, importBatchId',
+      tasks: '&id, *categoryIds, questId, cadence, active, sortOrder, createdAt, archivedAt, importBatchId',
+      quests: '&id, sortOrder, archived, completedAt, importBatchId',
+      completions: '&id, taskId, occurrenceKey, completedAt',
+      rewards: '&id, archived, createdAt',
+      walletTransactions: '&id, sourceId, type, createdAt',
+    })
   }
 }
 

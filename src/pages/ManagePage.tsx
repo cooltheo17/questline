@@ -9,6 +9,7 @@ import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
 import { TagIcon } from '@phosphor-icons/react/dist/csr/Tag'
 import { TrashIcon } from '@phosphor-icons/react/dist/csr/Trash'
 import { UploadSimpleIcon } from '@phosphor-icons/react/dist/csr/UploadSimple'
+import { FlagBannerIcon } from '@phosphor-icons/react/dist/csr/FlagBanner'
 import { categoryColorOptions } from '../domain/categories'
 import {
   Badge,
@@ -26,17 +27,21 @@ import {
 import { exportSnapshot } from '../data/backup'
 import {
   createCategory,
+  createQuest,
+  deleteBulkImport,
+  deleteQuest,
   deleteReward,
   deleteTask,
   importSnapshot,
   resetAllData,
   updateCategory,
+  updateQuest,
   updateReward,
   updateTask,
 } from '../data/repository'
-import { useAppCollections } from '../hooks/useAppCollections'
+import { useAppCollectionsContext } from '../hooks/AppCollectionsContext'
 import { useTheme } from '../theme/themeContext'
-import type { RewardItem, Task } from '../domain/types'
+import type { Category, Quest, RewardItem, Task } from '../domain/types'
 import styles from './Page.module.css'
 import sharedStyles from '../components/app/Shared.module.css'
 
@@ -54,15 +59,123 @@ const difficultyOptions = [
   { label: 'Large', value: 'large' },
 ]
 
+function createQuestFormState() {
+  return {
+    title: '',
+    description: '',
+    rewardXp: 100,
+    rewardCoins: 25,
+    imageUrl: '',
+  }
+}
+
+function formatBulkImportLabel(createdAt: string): string {
+  if (!createdAt) {
+    return 'Bulk import'
+  }
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(createdAt))
+}
+
+function getBulkImportSummaries(tasks: Task[], quests: Quest[], categories: Category[]) {
+  const batchMap = new Map<
+    string,
+    {
+      id: string
+      createdAt: string
+      taskCount: number
+      questCount: number
+      categoryCount: number
+    }
+  >()
+
+  for (const task of tasks) {
+    if (!task.importBatchId) {
+      continue
+    }
+
+    const current = batchMap.get(task.importBatchId) ?? {
+      id: task.importBatchId,
+      createdAt: task.createdAt,
+      taskCount: 0,
+      questCount: 0,
+      categoryCount: 0,
+    }
+
+    current.taskCount += 1
+    if (task.createdAt < current.createdAt) {
+      current.createdAt = task.createdAt
+    }
+    batchMap.set(task.importBatchId, current)
+  }
+
+  for (const quest of quests) {
+    if (!quest.importBatchId) {
+      continue
+    }
+
+    const current = batchMap.get(quest.importBatchId) ?? {
+      id: quest.importBatchId,
+      createdAt: quest.createdAt,
+      taskCount: 0,
+      questCount: 0,
+      categoryCount: 0,
+    }
+
+    current.questCount += 1
+    if (quest.createdAt < current.createdAt) {
+      current.createdAt = quest.createdAt
+    }
+    batchMap.set(quest.importBatchId, current)
+  }
+
+  for (const category of categories) {
+    if (!category.importBatchId) {
+      continue
+    }
+
+    const current = batchMap.get(category.importBatchId) ?? {
+      id: category.importBatchId,
+      createdAt: '',
+      taskCount: 0,
+      questCount: 0,
+      categoryCount: 0,
+    }
+
+    current.categoryCount += 1
+    batchMap.set(category.importBatchId, current)
+  }
+
+  return [...batchMap.values()]
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    .map((batch) => ({
+      ...batch,
+      label: `Bulk import · ${formatBulkImportLabel(batch.createdAt)}`,
+    }))
+}
+
 export function ManagePage() {
-  const { categories, tasks, rewards } = useAppCollections()
+  const { categories, tasks, quests, rewards } = useAppCollectionsContext()
   const { theme, themes, setThemeId } = useTheme()
-  const [activeTab, setActiveTab] = useState('categories')
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === 'undefined') {
+      return 'categories'
+    }
+
+    return new URLSearchParams(window.location.search).get('tab') ?? 'categories'
+  })
   const [newCategoryName, setNewCategoryName] = useState('')
   const [newCategoryColor, setNewCategoryColor] = useState('slate')
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [editingReward, setEditingReward] = useState<RewardItem | null>(null)
+  const [editingQuest, setEditingQuest] = useState<Quest | null>(null)
   const [message, setMessage] = useState('')
+  const [newQuest, setNewQuest] = useState(() => createQuestFormState())
   const importInputRef = useRef<HTMLInputElement>(null)
   const scrollPositionRef = useRef(0)
   const hasMountedTabRef = useRef(false)
@@ -81,6 +194,7 @@ export function ManagePage() {
 
     return left.sortOrder - right.sortOrder
   })
+  const bulkImportBatches = getBulkImportSummaries(tasks, quests, categories)
 
   useEffect(() => {
     if (!hasMountedTabRef.current) {
@@ -116,6 +230,7 @@ export function ManagePage() {
       id: task.id,
       title: task.title,
       categoryIds: task.categoryIds,
+      questId: task.questId,
       dueDate: task.dueDate,
       cadence: task.cadence,
       difficulty: task.difficulty,
@@ -127,7 +242,7 @@ export function ManagePage() {
   }
 
   return (
-    <div className={styles.page}>
+    <div data-slot="page" className={styles.page}>
       <Tabs
         value={activeTab}
         onValueChange={(value) => {
@@ -137,15 +252,17 @@ export function ManagePage() {
         items={[
           { label: 'Categories', value: 'categories' },
           { label: 'Tasks', value: 'tasks' },
+          { label: 'Quests', value: 'quests' },
           { label: 'Rewards', value: 'rewards' },
           { label: 'Appearance', value: 'appearance' },
           { label: 'Data', value: 'data' },
         ]}
       >
         <TabPanel value="categories">
-          <div className={styles.columns}>
+          <div data-slot="page-columns" className={styles.columns}>
             <Card>
               <form
+                data-slot="section-panel"
                 className={sharedStyles.panel}
                 onSubmit={(event) => {
                   event.preventDefault()
@@ -159,7 +276,7 @@ export function ManagePage() {
                 }}
               >
                 <div>
-                  <h2 className={sharedStyles.heading}>
+                  <h2 data-slot="section-heading" className={sharedStyles.heading}>
                     <span className={sharedStyles.headingInline}>
                       <TagIcon aria-hidden="true" size={20} weight="duotone" />
                       <span>Categories</span>
@@ -191,12 +308,12 @@ export function ManagePage() {
             </Card>
 
             <Card>
-              <div className={sharedStyles.list}>
+              <div data-slot="category-list" className={sharedStyles.list}>
                 {categories.map((category) => (
-                  <div key={category.id} className={styles.smallGrid}>
+                  <div data-slot="category-item" key={category.id} className={styles.smallGrid}>
                     <div className={styles.row}>
                       <Badge tone={category.colorKey}>{category.name}</Badge>
-                      {category.archived ? <span className={sharedStyles.muted}>Archived</span> : null}
+                      {category.archived ? <span data-slot="muted-text" className={sharedStyles.muted}>Archived</span> : null}
                     </div>
                     <TextField
                       value={category.name}
@@ -210,7 +327,7 @@ export function ManagePage() {
                         void updateCategory({ ...category, colorKey: value })
                       }
                     />
-                    <div className={sharedStyles.actions}>
+                    <div data-slot="action-group" className={sharedStyles.actions}>
                       <Button
                         size="sm"
                         variant="secondary"
@@ -237,20 +354,57 @@ export function ManagePage() {
 
         <TabPanel value="tasks">
           <Card>
-            <div className={sharedStyles.list}>
+            <div data-slot="stack-list" className={sharedStyles.list}>
+              {bulkImportBatches.length ? (
+                <div className={styles.row}>
+                  <div>
+                    <strong>Bulk imports</strong>
+                    <p data-slot="muted-text" className={sharedStyles.muted}>
+                      Remove a full imported batch from here.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+              {bulkImportBatches.map((batch) => (
+                <div key={batch.id} className={styles.row}>
+                  <div>
+                    <strong>{batch.label}</strong>
+                    <p data-slot="muted-text" className={sharedStyles.muted}>
+                      {batch.taskCount} tasks · {batch.questCount} quests · {batch.categoryCount} categories
+                    </p>
+                  </div>
+                  <div data-slot="action-group" className={sharedStyles.actions}>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => {
+                        if (window.confirm(`Remove "${batch.label}" and everything it imported? This cannot be undone.`)) {
+                          void deleteBulkImport(batch.id)
+                        }
+                      }}
+                    >
+                      <span className={sharedStyles.inlineLabel}>
+                        <TrashIcon aria-hidden="true" size={15} weight="bold" />
+                        <span>Remove batch</span>
+                      </span>
+                    </Button>
+                  </div>
+                </div>
+              ))}
               {sortedTasks.map((task) => (
                 <div key={task.id} className={styles.row}>
                   <div>
                     <strong>{task.title}</strong>
-                    <p className={sharedStyles.muted}>
+                    <p data-slot="muted-text" className={sharedStyles.muted}>
                       {task.cadence}
                       {task.dueDate ? ` · due ${task.dueDate}` : ''}
                       {' · '}
                       {task.categoryIds.length} tags · {task.subtasks.length} subtasks
+                      {task.importBatchId ? ' · bulk import' : ''}
                       {!task.active ? ' · completed' : ''}
                     </p>
                   </div>
-                  <div className={sharedStyles.actions}>
+                  <div data-slot="action-group" className={sharedStyles.actions}>
                     {task.cadence !== 'none' && task.active ? (
                       <Button size="sm" variant="secondary" onClick={() => void retireTask(task)}>
                         <span className={sharedStyles.inlineLabel}>
@@ -286,16 +440,143 @@ export function ManagePage() {
           </Card>
         </TabPanel>
 
+        <TabPanel value="quests">
+          <div data-slot="page-columns" className={styles.columns}>
+            <Card>
+              <form
+                data-slot="section-panel"
+                className={sharedStyles.panel}
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  if (!newQuest.title.trim()) {
+                    return
+                  }
+                  void createQuest(newQuest).then(() => setNewQuest(createQuestFormState()))
+                }}
+              >
+                <div>
+                  <h2 data-slot="section-heading" className={sharedStyles.heading}>
+                    <span className={sharedStyles.headingInline}>
+                      <FlagBannerIcon aria-hidden="true" size={20} weight="duotone" />
+                      <span>Quests</span>
+                    </span>
+                  </h2>
+                </div>
+                <Field label="Title">
+                  <TextField
+                    placeholder="30-day writing challenge"
+                    value={newQuest.title}
+                    onChange={(event) => setNewQuest((current) => ({ ...current, title: event.target.value }))}
+                  />
+                </Field>
+                <Field label="Description">
+                  <Textarea
+                    placeholder="Why this quest matters"
+                    value={newQuest.description}
+                    onChange={(event) =>
+                      setNewQuest((current) => ({ ...current, description: event.target.value }))
+                    }
+                  />
+                </Field>
+                <div className={styles.smallGrid}>
+                  <Field label="Reward XP">
+                    <TextField
+                      inputMode="numeric"
+                      value={String(newQuest.rewardXp)}
+                      onChange={(event) =>
+                        setNewQuest((current) => ({
+                          ...current,
+                          rewardXp: Number(event.target.value) || 0,
+                        }))
+                      }
+                    />
+                  </Field>
+                  <Field label="Reward coins">
+                    <TextField
+                      inputMode="numeric"
+                      value={String(newQuest.rewardCoins)}
+                      onChange={(event) =>
+                        setNewQuest((current) => ({
+                          ...current,
+                          rewardCoins: Number(event.target.value) || 0,
+                        }))
+                      }
+                    />
+                  </Field>
+                </div>
+                <Field label="Image URL">
+                  <TextField
+                    placeholder="https://example.com/cover.jpg"
+                    value={newQuest.imageUrl}
+                    onChange={(event) =>
+                      setNewQuest((current) => ({ ...current, imageUrl: event.target.value }))
+                    }
+                  />
+                </Field>
+                <Button type="submit">
+                  <span className={sharedStyles.inlineLabel}>
+                    <PlusIcon aria-hidden="true" size={16} weight="bold" />
+                    <span>Create quest</span>
+                  </span>
+                </Button>
+              </form>
+            </Card>
+
+            <Card>
+              <div data-slot="stack-list" className={sharedStyles.list}>
+                {quests.length ? (
+                  quests.map((quest) => (
+                    <div key={quest.id} className={styles.row}>
+                      <div>
+                        <strong>{quest.title}</strong>
+                        <p data-slot="muted-text" className={sharedStyles.muted}>
+                          {quest.rewardXp} XP · {quest.rewardCoins} coins
+                          {quest.completedAt ? ' · Completed' : ''}
+                          {quest.archived ? ' · Archived' : ''}
+                        </p>
+                      </div>
+                      <div data-slot="action-group" className={sharedStyles.actions}>
+                        <Button size="sm" variant="secondary" onClick={() => setEditingQuest(quest)}>
+                          <span className={sharedStyles.inlineLabel}>
+                            <PencilSimpleIcon aria-hidden="true" size={15} weight="bold" />
+                            <span>Edit</span>
+                          </span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => void updateQuest({ ...quest, archived: !quest.archived })}
+                        >
+                          <span className={sharedStyles.inlineLabel}>
+                            {quest.archived ? (
+                              <ArrowCounterClockwiseIcon aria-hidden="true" size={15} weight="bold" />
+                            ) : (
+                              <ArchiveIcon aria-hidden="true" size={15} weight="duotone" />
+                            )}
+                            <span>{quest.archived ? 'Restore' : 'Archive'}</span>
+                          </span>
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p data-slot="muted-text" className={sharedStyles.muted}>No quests yet.</p>
+                )}
+              </div>
+            </Card>
+          </div>
+        </TabPanel>
+
         <TabPanel value="rewards">
           <Card>
-            <div className={sharedStyles.list}>
+            <div data-slot="stack-list" className={sharedStyles.list}>
               {rewards.map((reward) => (
                 <div key={reward.id} className={styles.row}>
                   <div>
                     <strong>{reward.title}</strong>
-                    <p className={sharedStyles.muted}>{reward.coinCost} coins</p>
+                    <p data-slot="muted-text" className={sharedStyles.muted}>{reward.coinCost} coins</p>
                   </div>
-                  <div className={sharedStyles.actions}>
+                  <div data-slot="action-group" className={sharedStyles.actions}>
                     <Button size="sm" variant="secondary" onClick={() => setEditingReward(reward)}>
                       <span className={sharedStyles.inlineLabel}>
                         <PencilSimpleIcon aria-hidden="true" size={15} weight="bold" />
@@ -316,56 +597,118 @@ export function ManagePage() {
         </TabPanel>
 
         <TabPanel value="appearance">
-          <div className={styles.columns}>
+          <div className={styles.themeGallery}>
             {themes.map((candidate) => (
               <Card
                 key={candidate.id}
                 className={[
-                  styles.themeCard,
+                  styles.themeCardShell,
                   theme.id === candidate.id ? styles.themeCardActive : '',
                 ]
                   .filter(Boolean)
                   .join(' ')}
               >
-                <button type="button" className={styles.themeCard} onClick={() => setThemeId(candidate.id)}>
+                <button
+                  data-slot="theme-preview-card"
+                  type="button"
+                  className={styles.themeCardButton}
+                  aria-pressed={theme.id === candidate.id}
+                  onClick={() => setThemeId(candidate.id)}
+                >
                   <div className={styles.themePreview}>
                     <div
-                      className={styles.themePalette}
+                      className={styles.themeScene}
                       aria-hidden="true"
                       style={{ background: candidate.components.shell.pageBackground }}
                     >
-                      <div className={styles.themePaletteRow}>
+                      <div
+                        className={styles.themeSceneFrame}
+                        style={{ background: candidate.components.shell.panelBackground }}
+                      >
+                        <div className={styles.themeSceneToolbar}>
+                          <span
+                            className={styles.themeSceneDot}
+                            style={{ background: candidate.semantic.danger }}
+                          />
+                          <span
+                            className={styles.themeSceneDot}
+                            style={{ background: candidate.semantic.warning }}
+                          />
+                          <span
+                            className={styles.themeSceneDot}
+                            style={{ background: candidate.semantic.success }}
+                          />
+                        </div>
+                        <div className={styles.themeSceneBody}>
+                          <div
+                            className={styles.themeSceneFeature}
+                            style={{ background: candidate.semantic.surfaceRaised }}
+                          >
+                            <span
+                              className={styles.themeSceneFeatureLine}
+                              style={{ background: candidate.semantic.textPrimary }}
+                            />
+                            <span
+                              className={styles.themeSceneFeatureAccent}
+                              style={{ background: candidate.components.button.primaryBg }}
+                            />
+                            <span
+                              className={styles.themeSceneFeatureLineSoft}
+                              style={{ background: candidate.semantic.textSecondary }}
+                            />
+                          </div>
+                          <div className={styles.themeSceneRail}>
+                            <span
+                              className={styles.themeSceneTile}
+                              style={{ background: candidate.semantic.accent }}
+                            />
+                            <span
+                              className={styles.themeSceneTile}
+                              style={{ background: candidate.semantic.warning }}
+                            />
+                            <span
+                              className={styles.themeSceneTile}
+                              style={{ background: candidate.semantic.success }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className={styles.themeSwatchRow}>
                         <span
-                          className={[styles.themePaletteSwatch, styles.themePaletteSwatchWide].join(' ')}
+                          className={styles.themeSwatch}
                           style={{ background: candidate.semantic.surfaceRaised }}
                         />
                         <span
-                          className={[styles.themePaletteSwatch, styles.themePaletteSwatchTall].join(' ')}
-                          style={{ background: candidate.components.button.primaryBg }}
-                        />
-                      </div>
-                      <div className={styles.themePaletteRow}>
-                        <span
-                          className={styles.themePaletteSwatch}
+                          className={styles.themeSwatch}
                           style={{ background: candidate.semantic.accent }}
                         />
                         <span
-                          className={styles.themePaletteSwatch}
-                          style={{ background: candidate.semantic.success }}
+                          className={styles.themeSwatch}
+                          style={{ background: candidate.semantic.warning }}
                         />
                         <span
-                          className={[styles.themePaletteSwatch, styles.themePaletteSwatchAccent].join(' ')}
-                          style={{ background: candidate.semantic.warning }}
+                          className={styles.themeSwatch}
+                          style={{ background: candidate.components.button.primaryBg }}
                         />
                       </div>
                     </div>
                   </div>
-                  <div>
-                    <h2 className={sharedStyles.heading}>{candidate.meta.name}</h2>
-                    <p className={sharedStyles.muted}>
-                      {candidate.meta.description}
-                      {` · ${candidate.meta.colorScheme === 'dark' ? 'Dark' : 'Light'}`}
-                    </p>
+                  <div className={styles.themeCardMeta}>
+                    <div className={styles.themeCardHeader}>
+                      <div>
+                        <h2 className={styles.themeCardTitle}>{candidate.meta.name}</h2>
+                        <p className={styles.themeCardDescription}>{candidate.meta.description}</p>
+                      </div>
+                      <span className={styles.themeCardMode}>
+                        {candidate.meta.colorScheme === 'dark' ? 'Dark' : 'Light'}
+                      </span>
+                    </div>
+                    {theme.id === candidate.id ? (
+                      <span className={styles.themeCardSelected}>
+                        <CheckIcon aria-hidden="true" size={14} weight="bold" />
+                        <span>Selected</span>
+                      </span>
+                    ) : null}
                   </div>
                 </button>
               </Card>
@@ -375,14 +718,14 @@ export function ManagePage() {
 
         <TabPanel value="data">
           <Card>
-            <div className={sharedStyles.panel}>
-              <h2 className={sharedStyles.heading}>
+            <div data-slot="section-panel" className={sharedStyles.panel}>
+              <h2 data-slot="section-heading" className={sharedStyles.heading}>
                 <span className={sharedStyles.headingInline}>
                   <DatabaseIcon aria-hidden="true" size={20} weight="duotone" />
                   <span>Backups and reset</span>
                 </span>
               </h2>
-              <div className={sharedStyles.actions}>
+              <div data-slot="action-group" className={sharedStyles.actions}>
                 <Button onClick={() => void handleExport()}>
                   <span className={sharedStyles.inlineLabel}>
                     <DownloadSimpleIcon aria-hidden="true" size={16} weight="bold" />
@@ -409,7 +752,7 @@ export function ManagePage() {
                   </span>
                 </Button>
               </div>
-              {message ? <p className={sharedStyles.muted}>{message}</p> : null}
+              {message ? <p data-slot="muted-text" className={sharedStyles.muted}>{message}</p> : null}
               <input
                 ref={importInputRef}
                 hidden
@@ -433,9 +776,11 @@ export function ManagePage() {
       <TaskEditorDialog
         task={editingTask}
         categories={categoryOptions}
+        quests={quests}
         onClose={() => setEditingTask(null)}
       />
       <RewardEditorDialog reward={editingReward} onClose={() => setEditingReward(null)} />
+      <QuestEditorDialog quest={editingQuest} onClose={() => setEditingQuest(null)} />
     </div>
   )
 }
@@ -443,29 +788,44 @@ export function ManagePage() {
 function TaskEditorDialog({
   task,
   categories,
+  quests,
   onClose,
 }: {
   task: Task | null
   categories: Array<{ id: string; name: string; colorKey: string }>
+  quests: Quest[]
   onClose: () => void
 }) {
   const [draft, setDraft] = useState<Task | null>(null)
+  const questOptions = [
+    { label: 'No quest', value: 'none' },
+    ...quests.map((quest) => ({
+      label: quest.archived ? `${quest.title} (archived)` : quest.title,
+      value: quest.id,
+    })),
+  ]
 
   useEffect(() => {
     setDraft(task)
   }, [task])
 
   return (
-    <Dialog open={Boolean(task && draft)} onOpenChange={(open) => !open && onClose()} title="Edit task">
+    <Dialog
+      open={Boolean(task && draft)}
+      onOpenChange={(open) => !open && onClose()}
+      title="Edit task"
+      contentClassName={styles.taskDialogContent}
+    >
       {draft ? (
         <form
-          className={styles.dialogForm}
+          className={[styles.dialogForm, styles.taskDialogForm].join(' ')}
           onSubmit={(event) => {
             event.preventDefault()
             void updateTask({
               id: draft.id,
               title: draft.title,
               categoryIds: draft.categoryIds,
+              questId: draft.questId,
               dueDate: draft.dueDate,
               cadence: draft.cadence,
               difficulty: draft.difficulty,
@@ -482,8 +842,47 @@ function TaskEditorDialog({
               onChange={(event) => setDraft({ ...draft, title: event.target.value })}
             />
           </Field>
+          <div className={styles.taskMetaGrid}>
+            <Field label="Quest tag">
+              <>
+                <Select
+                  value={draft.questId ?? 'none'}
+                  onValueChange={(value) =>
+                    setDraft({ ...draft, questId: value === 'none' ? undefined : value })
+                  }
+                  options={questOptions}
+                />
+                <span data-slot="muted-text" className={sharedStyles.muted}>
+                  {draft.questId ? `Quest ID: ${draft.questId}` : 'Not linked to a quest'}
+                </span>
+              </>
+            </Field>
+            <Field label="Cadence">
+              <Select
+                value={draft.cadence}
+                onValueChange={(value) => setDraft({ ...draft, cadence: value as Task['cadence'] })}
+                options={cadenceOptions}
+              />
+            </Field>
+            <Field label="Due date">
+              <TextField
+                type="date"
+                value={draft.dueDate ?? ''}
+                onChange={(event) => setDraft({ ...draft, dueDate: event.target.value || undefined })}
+              />
+            </Field>
+            <Field label="Difficulty">
+              <Select
+                value={draft.difficulty}
+                onValueChange={(value) =>
+                  setDraft({ ...draft, difficulty: value as Task['difficulty'] })
+                }
+                options={difficultyOptions}
+              />
+            </Field>
+          </div>
           <Field label="Tags">
-            <div className={styles.smallGrid}>
+            <div className={styles.taskTagGrid}>
               {categories.map((category) => (
                 <Checkbox
                   key={category.id}
@@ -501,59 +900,42 @@ function TaskEditorDialog({
               ))}
             </div>
           </Field>
-          <Field label="Cadence">
-            <Select
-              value={draft.cadence}
-              onValueChange={(value) => setDraft({ ...draft, cadence: value as Task['cadence'] })}
-              options={cadenceOptions}
+          <div className={styles.taskDetailGrid}>
+            <Field label="Notes">
+              <Textarea
+                className={styles.compactTextarea}
+                value={draft.notes ?? ''}
+                onChange={(event) => setDraft({ ...draft, notes: event.target.value })}
+              />
+            </Field>
+            <Field label="Subtasks">
+              <Textarea
+                className={styles.compactTextarea}
+                value={draft.subtasks.map((subtask) => subtask.title).join('\n')}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    subtasks: event.target.value
+                      .split('\n')
+                      .map((title, index) => ({
+                        id: `${draft.id}-${index}`,
+                        title,
+                        sortOrder: index,
+                      }))
+                      .filter((subtask) => subtask.title.trim()),
+                  })
+                }
+              />
+            </Field>
+          </div>
+          <div className={styles.dialogActionRow}>
+            <Checkbox
+              checked={draft.active}
+              onCheckedChange={(checked) => setDraft({ ...draft, active: checked })}
+              label="Task is active"
             />
-          </Field>
-          <Field label="Due date">
-            <TextField
-              type="date"
-              value={draft.dueDate ?? ''}
-              onChange={(event) => setDraft({ ...draft, dueDate: event.target.value || undefined })}
-            />
-          </Field>
-          <Field label="Difficulty">
-            <Select
-              value={draft.difficulty}
-              onValueChange={(value) =>
-                setDraft({ ...draft, difficulty: value as Task['difficulty'] })
-              }
-              options={difficultyOptions}
-            />
-          </Field>
-          <Field label="Notes">
-            <Textarea
-              value={draft.notes ?? ''}
-              onChange={(event) => setDraft({ ...draft, notes: event.target.value })}
-            />
-          </Field>
-          <Field label="Subtasks">
-            <Textarea
-              value={draft.subtasks.map((subtask) => subtask.title).join('\n')}
-              onChange={(event) =>
-                setDraft({
-                  ...draft,
-                  subtasks: event.target.value
-                    .split('\n')
-                    .map((title, index) => ({
-                      id: `${draft.id}-${index}`,
-                      title,
-                      sortOrder: index,
-                    }))
-                    .filter((subtask) => subtask.title.trim()),
-                })
-              }
-            />
-          </Field>
-          <Checkbox
-            checked={draft.active}
-            onCheckedChange={(checked) => setDraft({ ...draft, active: checked })}
-            label="Task is active"
-          />
-          <Button type="submit">Save task</Button>
+            <Button type="submit">Save task</Button>
+          </div>
         </form>
       ) : null}
     </Dialog>
@@ -658,6 +1040,111 @@ function RewardEditorDialog({
             label="Reward is active"
           />
           <Button type="submit">Save reward</Button>
+        </form>
+      ) : null}
+    </Dialog>
+  )
+}
+
+function QuestEditorDialog({
+  quest,
+  onClose,
+}: {
+  quest: Quest | null
+  onClose: () => void
+}) {
+  const [draft, setDraft] = useState<Quest | null>(null)
+
+  useEffect(() => {
+    setDraft(quest)
+  }, [quest])
+
+  return (
+    <Dialog open={Boolean(quest && draft)} onOpenChange={(open) => !open && onClose()} title="Edit quest">
+      {draft ? (
+        <form
+          className={styles.dialogForm}
+          onSubmit={(event) => {
+            event.preventDefault()
+            void updateQuest({
+              id: draft.id,
+              title: draft.title,
+              description: draft.description,
+              imageUrl: draft.imageUrl,
+              rewardXp: draft.rewardXp,
+              rewardCoins: draft.rewardCoins,
+              archived: draft.archived,
+              completedAt: draft.completedAt,
+            }).then(onClose)
+          }}
+        >
+          <Field label="Title">
+            <TextField
+              value={draft.title}
+              onChange={(event) => setDraft({ ...draft, title: event.target.value })}
+            />
+          </Field>
+          <Field label="Description">
+            <Textarea
+              value={draft.description ?? ''}
+              onChange={(event) => setDraft({ ...draft, description: event.target.value })}
+            />
+          </Field>
+          <Field label="Reward XP">
+            <TextField
+              inputMode="numeric"
+              value={String(draft.rewardXp)}
+              onChange={(event) =>
+                setDraft({ ...draft, rewardXp: Number(event.target.value) || 0 })
+              }
+            />
+          </Field>
+          <Field label="Reward coins">
+            <TextField
+              inputMode="numeric"
+              value={String(draft.rewardCoins)}
+              onChange={(event) =>
+                setDraft({ ...draft, rewardCoins: Number(event.target.value) || 0 })
+              }
+            />
+          </Field>
+          <Field label="Image URL">
+            <TextField
+              value={draft.imageUrl ?? ''}
+              onChange={(event) => setDraft({ ...draft, imageUrl: event.target.value })}
+            />
+          </Field>
+          <Checkbox
+            checked={!draft.archived}
+            onCheckedChange={(checked) => setDraft({ ...draft, archived: !checked })}
+            label="Quest is active"
+          />
+          {draft.completedAt ? (
+            <p data-slot="muted-text" className={sharedStyles.muted}>
+              Completed on {new Date(draft.completedAt).toLocaleDateString()}
+            </p>
+          ) : null}
+          <div data-slot="action-group" className={sharedStyles.actions}>
+            <Button type="submit">Save quest</Button>
+            <Button
+              type="button"
+              variant="danger"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Delete "${draft.title}"? Linked tasks will stay, but they will be removed from this quest. This cannot be undone.`,
+                  )
+                ) {
+                  void deleteQuest(draft.id).then(onClose)
+                }
+              }}
+            >
+              <span className={sharedStyles.inlineLabel}>
+                <TrashIcon aria-hidden="true" size={16} weight="bold" />
+                <span>Delete quest</span>
+              </span>
+            </Button>
+          </div>
         </form>
       ) : null}
     </Dialog>

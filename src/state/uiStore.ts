@@ -1,15 +1,17 @@
 import { create } from 'zustand'
 
-export interface CompletionToast {
+export interface AppToast {
   id: string
   title: string
-  xp: number
-  coins: number
+  description: string
+  actionLabel?: string
+  onAction?: () => void
+  duration?: number
 }
 
 interface UiState {
-  toasts: CompletionToast[]
-  pushToast: (toast: Omit<CompletionToast, 'id'>) => void
+  toasts: AppToast[]
+  pushToast: (toast: Omit<AppToast, 'id'>) => void
   dismissToast: (id: string) => void
 }
 

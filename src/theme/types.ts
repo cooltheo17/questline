@@ -1,5 +1,6 @@
 export interface AppTheme {
   id: string
+  styles?: string
   meta: {
     name: string
     description: string

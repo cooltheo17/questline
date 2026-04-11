@@ -1,19 +1,27 @@
+import { AnimatePresence } from 'framer-motion'
 import { CoinsIcon } from '@phosphor-icons/react/dist/csr/Coins'
 import { GiftIcon } from '@phosphor-icons/react/dist/csr/Gift'
+import { MoneyIcon } from '@phosphor-icons/react/dist/csr/Money'
 import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
 import { TrashIcon } from '@phosphor-icons/react/dist/csr/Trash'
 import { RewardCard } from '../components/app/RewardCard'
+import { SectionHeading } from '../components/app/SectionHeading'
 import { Button, Card, Field, TextField, Textarea, Checkbox } from '../components/primitives/Primitives'
 import { createReward, deleteWalletTransaction, purchaseReward } from '../data/repository'
 import { getProfileSnapshot } from '../domain/selectors'
-import { useAppCollections } from '../hooks/useAppCollections'
-import { useState } from 'react'
+import type { RewardItem } from '../domain/types'
+import { useAppCollectionsContext } from '../hooks/AppCollectionsContext'
+import { useEffect, useRef, useState } from 'react'
+import { useUiStore } from '../state/uiStore'
 import styles from './Page.module.css'
 import sharedStyles from '../components/app/Shared.module.css'
 
+const PURCHASE_SETTLE_MS = 900
+
 export function RewardsPage() {
-  const { rewards, walletTransactions, completions, tasks, categories } = useAppCollections()
-  const profile = getProfileSnapshot(completions, walletTransactions, tasks, categories)
+  const { rewards, walletTransactions, completions, tasks, categories, quests } = useAppCollectionsContext()
+  const profile = getProfileSnapshot(completions, walletTransactions, tasks, categories, quests)
+  const pushToast = useUiStore((state) => state.pushToast)
   const [form, setForm] = useState({
     title: '',
     coinCost: 25,
@@ -21,72 +29,118 @@ export function RewardsPage() {
     link: '',
     repeatable: false,
   })
+  const [buyingRewardIds, setBuyingRewardIds] = useState<string[]>([])
+  const [recentlyPurchasedRewardIds, setRecentlyPurchasedRewardIds] = useState<string[]>([])
+  const purchaseTimerRefs = useRef<Record<string, number>>({})
+
+  useEffect(() => () => {
+    Object.values(purchaseTimerRefs.current).forEach((timerId) => window.clearTimeout(timerId))
+  }, [])
 
   const activeRewards = rewards.filter((reward) => !reward.archived)
+  const visibleRewards = rewards.filter(
+    (reward) => !reward.archived || recentlyPurchasedRewardIds.includes(reward.id),
+  )
   const purchaseHistory = walletTransactions.filter((entry) => entry.type === 'reward_purchase')
 
+  const markPurchaseSettled = (reward: RewardItem) => {
+    window.clearTimeout(purchaseTimerRefs.current[reward.id])
+    setRecentlyPurchasedRewardIds((current) => [...new Set([...current, reward.id])])
+    purchaseTimerRefs.current[reward.id] = window.setTimeout(() => {
+      setRecentlyPurchasedRewardIds((current) => current.filter((id) => id !== reward.id))
+      delete purchaseTimerRefs.current[reward.id]
+    }, PURCHASE_SETTLE_MS)
+  }
+
   return (
-    <div className={styles.page}>
-      <div className={styles.columns}>
-        <div className={styles.stack}>
+    <div data-slot="page" className={styles.page}>
+      <div data-slot="page-columns" className={styles.columns}>
+        <div data-slot="page-stack" className={styles.stack}>
           <Card>
-            <div className={sharedStyles.panel}>
-              <div className={sharedStyles.sectionTitle}>
-                <h2 className={sharedStyles.heading}>
-                  <span className={sharedStyles.headingInline}>
-                    <GiftIcon aria-hidden="true" size={20} weight="duotone" />
-                    <span>Rewards</span>
-                  </span>
-                </h2>
-              </div>
-              <div className={sharedStyles.stats}>
-                <div className={sharedStyles.stat}>
-                  <div className={sharedStyles.statValue}>{profile.coins}</div>
-                  <div className={sharedStyles.statLabel}>
-                    <span className={sharedStyles.inlineLabel}>
-                      <CoinsIcon aria-hidden="true" size={15} weight="duotone" />
-                      <span>Available coins</span>
-                    </span>
+            <div data-slot="section-panel" className={sharedStyles.panel}>
+              <SectionHeading
+                icon={<GiftIcon aria-hidden="true" size={20} weight="duotone" />}
+                title="Rewards"
+              />
+              <div data-slot="stats-grid" className={sharedStyles.stats}>
+                <div data-slot="stat" className={sharedStyles.stat}>
+                  <div className={sharedStyles.statValueRow}>
+                    <span data-slot="stat-value" className={sharedStyles.statValue}>{profile.coins}</span>
+                    <CoinsIcon aria-hidden="true" size={15} weight="duotone" />
                   </div>
+                  <div data-slot="stat-label" className={sharedStyles.statLabel}>Available coins</div>
                 </div>
-                <div className={sharedStyles.stat}>
-                  <div className={sharedStyles.statValue}>{activeRewards.length}</div>
-                  <div className={sharedStyles.statLabel}>
-                    <span className={sharedStyles.inlineLabel}>
-                      <GiftIcon aria-hidden="true" size={15} weight="duotone" />
-                      <span>Active rewards</span>
-                    </span>
+                <div data-slot="stat" className={sharedStyles.stat}>
+                  <div className={sharedStyles.statValueRow}>
+                    <span data-slot="stat-value" className={sharedStyles.statValue}>{activeRewards.length}</span>
+                    <GiftIcon aria-hidden="true" size={15} weight="duotone" />
                   </div>
+                  <div data-slot="stat-label" className={sharedStyles.statLabel}>Active rewards</div>
                 </div>
-                <div className={sharedStyles.stat}>
-                  <div className={sharedStyles.statValue}>{purchaseHistory.length}</div>
-                  <div className={sharedStyles.statLabel}>Purchases made</div>
+                <div data-slot="stat" className={sharedStyles.stat}>
+                  <div className={sharedStyles.statValueRow}>
+                    <span data-slot="stat-value" className={sharedStyles.statValue}>{purchaseHistory.length}</span>
+                    <MoneyIcon aria-hidden="true" size={15} weight="duotone" />
+                  </div>
+                  <div data-slot="stat-label" className={sharedStyles.statLabel}>Purchases made</div>
                 </div>
-                <div className={sharedStyles.stat}>
-                  <div className={sharedStyles.statValue}>{profile.totalXp}</div>
-                  <div className={sharedStyles.statLabel}>Total XP earned</div>
+                <div data-slot="stat" className={sharedStyles.stat}>
+                  <div className={sharedStyles.statValueRow}>
+                    <span data-slot="stat-value" className={sharedStyles.statValue}>{profile.totalXp}</span>
+                    <span className={sharedStyles.statUnit}>xp</span>
+                  </div>
+                  <div data-slot="stat-label" className={sharedStyles.statLabel}>Total XP earned</div>
                 </div>
               </div>
             </div>
           </Card>
 
-          <div className={sharedStyles.list}>
-            {activeRewards.map((reward) => (
-              <RewardCard
-                key={reward.id}
-                reward={reward}
-                canBuy={profile.coins >= reward.coinCost}
-                onBuy={async () => {
-                  await purchaseReward(reward)
-                }}
-              />
-            ))}
+          <div data-slot="stack-list" className={sharedStyles.list}>
+            <AnimatePresence initial={false}>
+              {visibleRewards.map((reward) => (
+                <RewardCard
+                  key={reward.id}
+                  reward={reward}
+                  canBuy={profile.coins >= reward.coinCost}
+                  purchaseState={
+                    buyingRewardIds.includes(reward.id)
+                      ? 'buying'
+                      : recentlyPurchasedRewardIds.includes(reward.id)
+                        ? 'purchased'
+                        : 'idle'
+                  }
+                  onBuy={async () => {
+                    setBuyingRewardIds((current) => [...new Set([...current, reward.id])])
+
+                    try {
+                      const purchased = await purchaseReward(reward)
+
+                      if (!purchased) {
+                        return false
+                      }
+
+                      markPurchaseSettled(reward)
+                      pushToast({
+                        title: reward.title,
+                        description: reward.repeatable
+                          ? `${reward.coinCost} coins spent. This one stays on the shelf for next time.`
+                          : `${reward.coinCost} coins spent. Added to your purchase history.`,
+                      })
+                      return true
+                    } finally {
+                      setBuyingRewardIds((current) => current.filter((id) => id !== reward.id))
+                    }
+                  }}
+                />
+              ))}
+            </AnimatePresence>
           </div>
         </div>
 
-        <div className={styles.stack}>
+        <div data-slot="page-stack" className={styles.stack}>
           <Card>
             <form
+              data-slot="section-panel"
               className={sharedStyles.panel}
               onSubmit={(event) => {
                 event.preventDefault()
@@ -102,7 +156,7 @@ export function RewardsPage() {
               }}
             >
               <div>
-                <h2 className={sharedStyles.heading}>Add reward</h2>
+                <h2 data-slot="section-heading" className={sharedStyles.heading}>Add reward</h2>
               </div>
               <Field label="Reward">
                 <TextField
@@ -149,14 +203,14 @@ export function RewardsPage() {
           </Card>
 
           <Card>
-            <div className={sharedStyles.panel}>
-              <h2 className={sharedStyles.heading}>Purchase history</h2>
-              <div className={styles.history}>
+            <div data-slot="section-panel" className={sharedStyles.panel}>
+              <h2 data-slot="section-heading" className={sharedStyles.heading}>Purchase history</h2>
+              <div data-slot="history-list" className={styles.history}>
                 {purchaseHistory.length ? (
                   purchaseHistory.map((entry) => {
                     const reward = rewards.find((item) => item.id === entry.sourceId)
                     return (
-                      <div key={entry.id} className={styles.historyRow}>
+                      <div data-slot="history-row" key={entry.id} className={styles.historyRow}>
                         <div>
                           <div>{reward?.title ?? 'Archived reward'}</div>
                           <div className={styles.historyMeta}>
@@ -164,7 +218,7 @@ export function RewardsPage() {
                             <span>{new Date(entry.createdAt).toLocaleDateString()}</span>
                           </div>
                         </div>
-                        <div className={styles.historyActions}>
+                        <div data-slot="action-group" className={styles.historyActions}>
                           <Button
                             variant="secondary"
                             onClick={() => void deleteWalletTransaction(entry.id)}
@@ -179,7 +233,7 @@ export function RewardsPage() {
                     )
                   })
                 ) : (
-                  <p className={sharedStyles.muted}>Nothing spent yet.</p>
+                  <p data-slot="muted-text" className={sharedStyles.muted}>Nothing spent yet.</p>
                 )}
               </div>
             </div>

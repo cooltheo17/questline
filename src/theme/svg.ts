@@ -33,3 +33,13 @@ export function createSceneSvg({
     </svg>`,
   )
 }
+
+export function createThemedSvgAsset(svg: string, replacements: Record<string, string>): string {
+  let themedSvg = svg
+
+  for (const [from, to] of Object.entries(replacements)) {
+    themedSvg = themedSvg.split(from).join(to)
+  }
+
+  return encodeSvg(themedSvg)
+}

@@ -3,7 +3,7 @@
   gap: 0.9rem;
   background: var(--theme-task-card-background);
   border: 1px solid var(--theme-task-card-border);
-  border-radius: var(--theme-radius-lg);
+  border-radius: var(--theme-radius-md);
   padding: 1rem;
   transition:
     border-color var(--theme-motion-fast),
@@ -12,7 +12,7 @@
 
 .task:hover {
   border-color: var(--theme-task-card-hover-border);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-semantic-accent) 14%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-semantic-accent) 12%, transparent);
 }
 
 .draggable {
@@ -21,13 +21,12 @@
 
 .dragActive {
   border-color: var(--theme-semantic-accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-semantic-accent) 22%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-semantic-accent) 18%, transparent);
 }
 
 .completed {
   background: var(--theme-task-card-completed-background);
   border-color: color-mix(in srgb, var(--theme-semantic-success) 24%, var(--theme-task-card-border));
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--theme-semantic-success) 12%, transparent);
 }
 
 .row {
