@@ -11,16 +11,7 @@ describe('QuickAddComposer', () => {
 
     render(
       <QuickAddComposer
-        categories={[
-          {
-            id: 'inbox',
-            name: 'General',
-            iconKey: 'scroll',
-            colorKey: 'accent',
-            sortOrder: 0,
-            archived: false,
-          },
-        ]}
+        categories={[]}
         quests={[]}
         onCreate={onCreate}
         onBulkCreate={onBulkCreate}
@@ -32,7 +23,7 @@ describe('QuickAddComposer', () => {
     expect(onCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'Buy groceries',
-        categoryIds: ['inbox'],
+        categoryIds: [],
         cadence: 'none',
         difficulty: 'small',
       }),
@@ -46,16 +37,7 @@ describe('QuickAddComposer', () => {
 
     render(
       <QuickAddComposer
-        categories={[
-          {
-            id: 'inbox',
-            name: 'General',
-            iconKey: 'scroll',
-            colorKey: 'accent',
-            sortOrder: 0,
-            archived: false,
-          },
-        ]}
+        categories={[]}
         quests={[]}
         onCreate={onCreate}
         onBulkCreate={onBulkCreate}
@@ -65,7 +47,7 @@ describe('QuickAddComposer', () => {
     await user.click(screen.getByRole('button', { name: /details/i }))
     await user.click(screen.getByRole('button', { name: /paste json/i }))
     await user.click(screen.getByRole('textbox', { name: /json/i }))
-    await user.paste('{"tasks":[{"title":"Break down taxes","categoryIds":["inbox"],"subtasks":["Find P60","Book accountant"]}]}')
+    await user.paste('{"tasks":[{"title":"Break down taxes","subtasks":["Find P60","Book accountant"]}]}')
     await user.click(screen.getByRole('button', { name: /import items/i }))
 
     expect(onBulkCreate).toHaveBeenCalledWith(

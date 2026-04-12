@@ -42,6 +42,7 @@ This repo includes a `vercel.json` configured for Vite SPA deployment:
 - framework preset: `vite`
 - build command: `npm run build`
 - output directory: `dist`
+- automatic Vercel deployments only from the `main` branch
 - SPA rewrite of all routes to `index.html` so direct visits to routes like `/today` and `/quests/:questId` work in production
 - a few conservative security headers for static hosting
 
@@ -67,6 +68,17 @@ The app uses React Router in SPA mode, so a host needs to send `index.html` for 
 `vercel.json` is only used by Vercel. It does not affect local development, `npm run dev`, `npm run build`, tests, or other hosting platforms unless someone chooses to deploy on Vercel.
 
 If someone clones the repo and does not want Vercel, they can ignore the file completely. If they deploy elsewhere, they just need the equivalent SPA fallback rule on their own host.
+
+### Recommended GitHub setup for a public repo
+
+To match the Vercel config:
+
+- protect `main`
+- disable direct pushes to `main`
+- require changes to land through pull requests
+- keep Vercel auto-deploys limited to `main`
+
+Typical outside-contributor flow is fork -> branch -> pull request, not direct pushes to this repository.
 
 ## Install
 

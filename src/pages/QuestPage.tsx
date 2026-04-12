@@ -7,7 +7,7 @@ import { Badge, Button, Card, ProgressBar } from '../components/primitives/Primi
 import { useAppCollections } from '../hooks/useAppCollections'
 import { completeQuest } from '../data/repository'
 import { getQuestProgress, getQuestTasks, isQuestTaskComplete } from '../domain/quests'
-import { getCategoryTone } from '../domain/categories'
+import { getCategoryTone, UNCATEGORIZED_LABEL, UNCATEGORIZED_TONE } from '../domain/categories'
 import sharedStyles from '../components/app/Shared.module.css'
 import styles from './Page.module.css'
 
@@ -159,11 +159,15 @@ export function QuestPage() {
                       </div>
                     </div>
                     <div className={styles.questTaskBadges}>
-                      {view.categories.map((category) => (
-                        <Badge key={category.id} tone={getCategoryTone(category.colorKey)}>
-                          {category.name}
-                        </Badge>
-                      ))}
+                      {view.categories.length ? (
+                        view.categories.map((category) => (
+                          <Badge key={category.id} tone={getCategoryTone(category.colorKey)}>
+                            {category.name}
+                          </Badge>
+                        ))
+                      ) : (
+                        <Badge tone={UNCATEGORIZED_TONE}>{UNCATEGORIZED_LABEL}</Badge>
+                      )}
                       <Badge tone={view.isComplete ? 'sage' : 'mist'}>
                         {view.isComplete ? 'Complete' : 'In progress'}
                       </Badge>

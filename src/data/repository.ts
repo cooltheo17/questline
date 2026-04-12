@@ -1,4 +1,4 @@
-import { db, DEFAULT_CATEGORY_ID } from './db'
+import { db } from './db'
 import { parseSnapshot } from './backup'
 import { getCompletionForDate, getOccurrenceKey } from '../domain/recurrence'
 import { getTaskReward, getWalletBalance } from '../domain/rewards'
@@ -74,44 +74,7 @@ function toSubtasks(titles: string[]) {
 }
 
 export async function ensureSeedData(): Promise<void> {
-  const count = await db.categories.count()
-
-  if (count > 0) {
-    const inbox = await db.categories.get(DEFAULT_CATEGORY_ID)
-
-    if (inbox && inbox.name === 'Inbox') {
-      await db.categories.put({ ...inbox, name: 'General' })
-    }
-
-    return
-  }
-
-  await db.categories.bulkAdd([
-    {
-      id: DEFAULT_CATEGORY_ID,
-      name: 'General',
-      iconKey: 'scroll',
-      colorKey: 'mist',
-      sortOrder: 0,
-      archived: false,
-    },
-    {
-      id: 'rituals',
-      name: 'Rituals',
-      iconKey: 'sun',
-      colorKey: 'sage',
-      sortOrder: 1,
-      archived: false,
-    },
-    {
-      id: 'health',
-      name: 'Health',
-      iconKey: 'leaf',
-      colorKey: 'brass',
-      sortOrder: 2,
-      archived: false,
-    },
-  ])
+  // Starter categories are no longer auto-created. New installs begin empty.
 }
 
 export async function createCategory(input: CreateCategoryInput): Promise<void> {
@@ -131,10 +94,6 @@ export async function updateCategory(category: Category): Promise<void> {
 }
 
 export async function deleteCategory(categoryId: string): Promise<void> {
-  if (categoryId === DEFAULT_CATEGORY_ID) {
-    return
-  }
-
   await db.transaction('rw', db.categories, db.tasks, async () => {
     const category = await db.categories.get(categoryId)
 
@@ -143,10 +102,8 @@ export async function deleteCategory(categoryId: string): Promise<void> {
     }
 
     await db.categories.delete(categoryId)
-    await db.categories.update(DEFAULT_CATEGORY_ID, { archived: false })
     await db.tasks.where('categoryIds').equals(categoryId).modify((task) => {
-      const nextCategoryIds = task.categoryIds.filter((id) => id !== categoryId)
-      task.categoryIds = nextCategoryIds.length ? nextCategoryIds : [DEFAULT_CATEGORY_ID]
+      task.categoryIds = task.categoryIds.filter((id) => id !== categoryId)
     })
   })
 }
@@ -160,7 +117,7 @@ export async function createTask(input: CreateTaskInput): Promise<void> {
     id: createId(),
     title: input.title.trim(),
     notes: input.notes?.trim() || undefined,
-    categoryIds: input.categoryIds.length ? input.categoryIds : [DEFAULT_CATEGORY_ID],
+    categoryIds: input.categoryIds,
     dueDate,
     questId,
     cadence: input.cadence,
@@ -188,7 +145,7 @@ export async function updateTask(input: UpdateTaskInput): Promise<void> {
     ...current,
     title: input.title.trim(),
     notes: input.notes?.trim() || undefined,
-    categoryIds: input.categoryIds.length ? input.categoryIds : [DEFAULT_CATEGORY_ID],
+    categoryIds: input.categoryIds,
     dueDate,
     questId,
     cadence: input.cadence,
@@ -287,7 +244,7 @@ export async function createFromBulkImportPlan(plan: BulkImportPlan): Promise<Bu
       id: createId(),
       title: input.title.trim(),
       notes: input.notes?.trim() || undefined,
-      categoryIds: input.categoryIds.length ? input.categoryIds : [DEFAULT_CATEGORY_ID],
+      categoryIds: input.categoryIds,
       dueDate,
       questId,
       cadence: input.cadence,

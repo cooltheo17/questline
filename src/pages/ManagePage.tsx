@@ -40,7 +40,6 @@ import {
   updateReward,
   updateTask,
 } from '../data/repository'
-import { DEFAULT_CATEGORY_ID } from '../data/db'
 import { useAppCollectionsContext } from '../hooks/AppCollectionsContext'
 import { useTheme } from '../theme/themeContext'
 import type { Category, Quest, RewardItem, Task } from '../domain/types'
@@ -341,26 +340,24 @@ export function ManagePage() {
                           <span>{category.archived ? 'Restore' : 'Archive'}</span>
                         </span>
                       </Button>
-                      {category.id !== DEFAULT_CATEGORY_ID ? (
-                        <Button
-                          size="sm"
-                          variant="danger"
-                          onClick={() => {
-                            if (
-                              window.confirm(
-                                `Delete "${category.name}"? Tasks using only this category will be moved to General. This cannot be undone.`,
-                              )
-                            ) {
-                              void deleteCategory(category.id)
-                            }
-                          }}
-                        >
-                          <span className={sharedStyles.inlineLabel}>
-                            <TrashIcon aria-hidden="true" size={15} weight="bold" />
-                            <span>Delete</span>
-                          </span>
-                        </Button>
-                      ) : null}
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Delete "${category.name}"? Tasks using only this category will become uncategorized. This cannot be undone.`,
+                            )
+                          ) {
+                            void deleteCategory(category.id)
+                          }
+                        }}
+                      >
+                        <span className={sharedStyles.inlineLabel}>
+                          <TrashIcon aria-hidden="true" size={15} weight="bold" />
+                          <span>Delete</span>
+                        </span>
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -424,7 +421,9 @@ export function ManagePage() {
                         {task.cadence}
                         {task.dueDate ? ` · due ${task.dueDate}` : ''}
                         {' · '}
-                      {task.categoryIds.length} categories · {task.subtasks.length} subtasks
+                        {task.categoryIds.length === 0 ? 'Uncategorized' : `${task.categoryIds.length} categories`}
+                        {' · '}
+                        {task.subtasks.length} subtasks
                         {task.importBatchId ? ' · bulk import' : ''}
                         {!task.active ? ' · completed' : ''}
                       </p>

@@ -3,7 +3,7 @@ import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
 import { CoinsIcon } from '@phosphor-icons/react/dist/csr/Coins'
 import type { DragEvent as ReactDragEvent, ReactNode } from 'react'
 import { Badge, Button, Checkbox } from '../primitives/Primitives'
-import { getCategoryTone } from '../../domain/categories'
+import { getCategoryTone, UNCATEGORIZED_LABEL, UNCATEGORIZED_TONE } from '../../domain/categories'
 import { getTaskReward } from '../../domain/rewards'
 import type { Category, CompletionRecord, Task } from '../../domain/types'
 import sharedStyles from './Shared.module.css'
@@ -103,11 +103,15 @@ export function TaskCard({
           {task.notes ? <div data-slot="task-notes" className={styles.notes}>{task.notes}</div> : null}
         </div>
         <div data-slot="task-tag-list" className={styles.tagList}>
-          {categories.map((category) => (
-            <Badge key={category.id} tone={getCategoryTone(category.colorKey)}>
-              {category.name}
-            </Badge>
-          ))}
+          {categories.length ? (
+            categories.map((category) => (
+              <Badge key={category.id} tone={getCategoryTone(category.colorKey)}>
+                {category.name}
+              </Badge>
+            ))
+          ) : (
+            <Badge tone={UNCATEGORIZED_TONE}>{UNCATEGORIZED_LABEL}</Badge>
+          )}
         </div>
       </div>
 

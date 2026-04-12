@@ -175,10 +175,9 @@ function parseSubtasks(value: unknown, taskTitle: string): string[] {
 function parseCategoryIds(
   value: unknown,
   taskTitle: string,
-  fallbackCategoryId: string,
 ): string[] {
   if (value === undefined) {
-    return [fallbackCategoryId]
+    return []
   }
 
   if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) {
@@ -188,7 +187,7 @@ function parseCategoryIds(
   const categoryIds = [...new Set(value.map((entry) => entry.trim()).filter(Boolean))]
 
   if (categoryIds.length === 0) {
-    return [fallbackCategoryId]
+    return []
   }
 
   return categoryIds
@@ -239,7 +238,6 @@ function parseQuestPlan(record: Record<string, unknown>, index: number): BulkImp
 function parseTaskPlan(
   record: Record<string, unknown>,
   questLookup: Map<string, BulkImportQuestReference>,
-  fallbackCategoryId: string,
   parentQuestKey?: string,
 ): BulkImportTaskPlan {
   const title = readText(record.title)
@@ -263,7 +261,7 @@ function parseTaskPlan(
     input: {
       title,
       notes: readText(record.notes),
-      categoryIds: parseCategoryIds(record.categoryIds, title, fallbackCategoryId),
+      categoryIds: parseCategoryIds(record.categoryIds, title),
       dueDate: parseDueDate(record.dueDate, title),
       cadence: parseCadence(record.cadence, title),
       difficulty: parseDifficulty(record.difficulty, title),
@@ -319,7 +317,6 @@ export function parseBulkImportInput(
   },
 ): BulkImportPlan {
   const payload = parsePayload(raw)
-  const fallbackCategoryId = categories[0]?.id ?? 'inbox'
   const questLookup = new Map<string, BulkImportQuestReference>()
   const existingCategoryIds = new Set(categories.map((category) => category.id))
   const warnings: string[] = []
@@ -381,7 +378,7 @@ export function parseBulkImportInput(
         throw new Error(`Task ${taskIndex + 1} in quest "${questPlans[questIndex]?.input.title}" must be an object.`)
       }
 
-      return parseTaskPlan(task, questLookup, fallbackCategoryId, parentQuestKey)
+      return parseTaskPlan(task, questLookup, parentQuestKey)
     })
   })
 
@@ -390,7 +387,7 @@ export function parseBulkImportInput(
       throw new Error(`Task ${index + 1} must be an object.`)
     }
 
-    return parseTaskPlan(task, questLookup, fallbackCategoryId)
+    return parseTaskPlan(task, questLookup)
   })
 
   const tasks = [...nestedTasks, ...standaloneTasks]

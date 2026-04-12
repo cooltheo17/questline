@@ -93,7 +93,6 @@ describe('parseBulkImportInput', () => {
           {
             title: 'Draft the outline',
             questTitle: 'Existing quest',
-            categoryIds: ['inbox'],
             rewardOverride: { xp: 25, coins: 5 },
           },
         ],
@@ -103,6 +102,7 @@ describe('parseBulkImportInput', () => {
 
     expect(plan.tasks[0]?.questRef).toEqual({ kind: 'existing', questId: 'existing-quest' })
     expect(plan.tasks[0]?.input.rewardOverride).toEqual({ xp: 25, coins: 5 })
+    expect(plan.tasks[0]?.input.categoryIds).toEqual([])
   })
 
   it('allows new category ids and still rejects malformed payloads', () => {
@@ -145,5 +145,25 @@ describe('parseBulkImportInput', () => {
     expect(plan.categories).toEqual([])
     expect(plan.tasks[0]?.input.categoryIds).toEqual(['health'])
     expect(plan.warnings).toContain('Skipped category "health" because it already exists.')
+  })
+
+  it('treats missing or empty categoryIds as uncategorized', () => {
+    const plan = parseBulkImportInput(
+      JSON.stringify({
+        tasks: [
+          {
+            title: 'Brain dump',
+          },
+          {
+            title: 'Inbox zero',
+            categoryIds: [],
+          },
+        ],
+      }),
+      { categories, quests },
+    )
+
+    expect(plan.tasks[0]?.input.categoryIds).toEqual([])
+    expect(plan.tasks[1]?.input.categoryIds).toEqual([])
   })
 })
