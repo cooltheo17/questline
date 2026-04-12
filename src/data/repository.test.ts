@@ -29,7 +29,7 @@ describe('repository flows', () => {
   it('awards a one-off task immediately on completion', async () => {
     await createTask({
       title: 'Send the email',
-      categoryIds: ['inbox'],
+      categoryIds: [],
       cadence: 'none',
       difficulty: 'small',
     })
@@ -50,7 +50,7 @@ describe('repository flows', () => {
   it('waits for the last subtask before awarding rewards', async () => {
     await createTask({
       title: 'Take vitamins',
-      categoryIds: ['health', 'rituals'],
+      categoryIds: [],
       cadence: 'daily',
       difficulty: 'small',
       subtasks: ['Vitamin D', 'Magnesium', 'Omega 3'],
@@ -78,7 +78,7 @@ describe('repository flows', () => {
   it('removes completion history and linked reward transaction together', async () => {
     await createTask({
       title: 'Send the email',
-      categoryIds: ['inbox'],
+      categoryIds: [],
       cadence: 'none',
       difficulty: 'small',
     })
@@ -194,7 +194,7 @@ describe('repository flows', () => {
 
     await createTask({
       title: 'Climb the first ridge',
-      categoryIds: ['inbox'],
+      categoryIds: [],
       questId: quest!.id,
       cadence: 'none',
       difficulty: 'small',
@@ -210,7 +210,26 @@ describe('repository flows', () => {
     expect(task?.questId).toBeUndefined()
   })
 
-  it('deletes a category and moves affected tasks to General when needed', async () => {
+  it('deletes a category and leaves affected tasks uncategorized when needed', async () => {
+    await db.categories.bulkAdd([
+      {
+        id: 'health',
+        name: 'Health',
+        iconKey: 'leaf',
+        colorKey: 'brass',
+        sortOrder: 0,
+        archived: false,
+      },
+      {
+        id: 'rituals',
+        name: 'Rituals',
+        iconKey: 'sun',
+        colorKey: 'sage',
+        sortOrder: 1,
+        archived: false,
+      },
+    ])
+
     await createTask({
       title: 'Doctor booking',
       categoryIds: ['health'],
@@ -230,11 +249,20 @@ describe('repository flows', () => {
     expect(await db.categories.get('health')).toBeUndefined()
 
     const tasks = await db.tasks.orderBy('sortOrder').toArray()
-    expect(tasks[0]?.categoryIds).toEqual(['inbox'])
+    expect(tasks[0]?.categoryIds).toEqual([])
     expect(tasks[1]?.categoryIds).toEqual(['rituals'])
   })
 
   it('creates quests and tasks from a bulk import plan', async () => {
+    await db.categories.add({
+      id: 'health',
+      name: 'Health',
+      iconKey: 'leaf',
+      colorKey: 'brass',
+      sortOrder: 0,
+      archived: false,
+    })
+
     const plan = parseBulkImportInput(
       JSON.stringify({
         categories: [
@@ -252,7 +280,7 @@ describe('repository flows', () => {
             tasks: [
               {
                 title: 'Clear the sink',
-                categoryIds: ['inbox'],
+                categoryIds: [],
               },
               {
                 title: 'Refill prescriptions',
@@ -338,7 +366,7 @@ describe('repository flows', () => {
             tasks: [
               {
                 title: 'Imported task',
-                categoryIds: ['inbox'],
+                categoryIds: [],
               },
             ],
           },

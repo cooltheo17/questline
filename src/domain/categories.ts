@@ -1,5 +1,8 @@
 import type { Category, Task } from './types'
 
+export const UNCATEGORIZED_LABEL = 'Uncategorized'
+export const UNCATEGORIZED_TONE = 'mist'
+
 export const categoryColorOptions = [
   { label: 'Slate', value: 'slate' },
   { label: 'Brass', value: 'brass' },

@@ -65,4 +65,3 @@ class TodoDatabase extends Dexie {
 }
 
 export const db = new TodoDatabase()
-export const DEFAULT_CATEGORY_ID = 'inbox'

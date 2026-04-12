@@ -14,7 +14,6 @@ import {
   TextField,
   Textarea,
 } from '../primitives/Primitives'
-import { DEFAULT_CATEGORY_ID } from '../../data/db'
 import { getCategoryTone } from '../../domain/categories'
 import type { Category, CreateTaskInput, Difficulty, Cadence, Quest } from '../../domain/types'
 import styles from './QuickAddComposer.module.css'
@@ -27,10 +26,10 @@ const cadenceOptions = [
   { label: 'Monthly', value: 'monthly' },
 ]
 
-function initialState(categoryId: string) {
+function initialState(categoryId?: string) {
   return {
     title: '',
-    categoryIds: [categoryId],
+    categoryIds: categoryId ? [categoryId] : [],
     questId: '',
     dueDate: '',
     cadence: 'none' as Cadence,
@@ -86,7 +85,7 @@ export function QuickAddComposer({
   onCreate: (input: CreateTaskInput) => Promise<void>
   onBulkCreate: (plan: BulkImportPlan) => Promise<BulkImportCommit>
 }) {
-  const defaultCategoryId = categories[0]?.id ?? DEFAULT_CATEGORY_ID
+  const defaultCategoryId = categories[0]?.id
   const [expanded, setExpanded] = useState(false)
   const [state, setState] = useState(() => initialState(defaultCategoryId))
   const [showValidation, setShowValidation] = useState(false)
@@ -191,7 +190,7 @@ export function QuickAddComposer({
 
       return {
         ...current,
-        categoryIds: nextIds.length ? nextIds : [defaultCategoryId],
+        categoryIds: nextIds,
       }
     })
   }
