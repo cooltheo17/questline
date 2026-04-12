@@ -35,6 +35,39 @@ npm run test:e2e
 
 `npm run test:e2e` requires Playwright browsers to be installed locally.
 
+## Deploying To Vercel
+
+This repo includes a `vercel.json` configured for Vite SPA deployment:
+
+- framework preset: `vite`
+- build command: `npm run build`
+- output directory: `dist`
+- SPA rewrite of all routes to `index.html` so direct visits to routes like `/today` and `/quests/:questId` work in production
+- a few conservative security headers for static hosting
+
+Typical flow:
+
+```bash
+npm install -g vercel
+vercel
+```
+
+For production:
+
+```bash
+vercel --prod
+```
+
+### Why `vercel.json` exists
+
+The app uses React Router in SPA mode, so a host needs to send `index.html` for deep links such as `/today`, `/manage`, and `/quests/:questId`. `vercel.json` tells Vercel to do that rewrite and applies a few hosting-specific headers.
+
+### Why it is optional for clones
+
+`vercel.json` is only used by Vercel. It does not affect local development, `npm run dev`, `npm run build`, tests, or other hosting platforms unless someone chooses to deploy on Vercel.
+
+If someone clones the repo and does not want Vercel, they can ignore the file completely. If they deploy elsewhere, they just need the equivalent SPA fallback rule on their own host.
+
 ## Install
 
 ```bash
