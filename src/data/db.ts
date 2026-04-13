@@ -4,6 +4,17 @@ import type { Category, CompletionRecord, Quest, RewardItem, Task, WalletTransac
 
 export const DEXIE_CLOUD_DATABASE_URL = import.meta.env.VITE_DEXIE_CLOUD_DB_URL?.trim() ?? ''
 export const DEXIE_CLOUD_ENABLED = Boolean(DEXIE_CLOUD_DATABASE_URL) && import.meta.env.MODE !== 'test'
+const CLOUD_SYNC_ENABLED_STORAGE_KEY = 'questline-cloud-sync-enabled'
+
+function isCloudEnabledForThisDeviceAtStartup(): boolean {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  return window.localStorage.getItem(CLOUD_SYNC_ENABLED_STORAGE_KEY) === 'true'
+}
+
+export const DEXIE_CLOUD_ACTIVE_FOR_DEVICE = DEXIE_CLOUD_ENABLED && isCloudEnabledForThisDeviceAtStartup()
 
 class TodoDatabase extends Dexie {
   categories!: EntityTable<Category, 'id'>
@@ -78,3 +89,12 @@ class TodoDatabase extends Dexie {
 }
 
 export const db = new TodoDatabase()
+
+if (DEXIE_CLOUD_ACTIVE_FOR_DEVICE) {
+  db.cloud.configure({
+    databaseUrl: DEXIE_CLOUD_DATABASE_URL,
+    requireAuth: false,
+    disableEagerSync: true,
+    disableWebSocket: true,
+  })
+}
