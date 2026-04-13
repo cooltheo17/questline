@@ -7,7 +7,7 @@ import chooseHeroSvg from '../../assets/undraw_choose_5kz4.svg?raw'
 import emptyStreetSvg from '../../assets/undraw_empty-street_3ogh.svg?raw'
 import profileAvatarSvg from '../../assets/undraw_friendly-guy-avatar_dqp5.svg?raw'
 
-export const customTheme: AppTheme = {
+export const patchworkTheme: AppTheme = {
   id: 'patchwork',
   styles: String.raw`
     html[data-theme='patchwork'] [data-slot='app-shell-container'] {

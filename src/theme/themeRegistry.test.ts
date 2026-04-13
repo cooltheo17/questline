@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { themes } from './themeRegistry'
+import { defaultTheme, getThemeById, themes } from './themeRegistry'
 
 describe('theme registry', () => {
   it('ships themes that satisfy the contract shape', () => {
@@ -14,5 +14,17 @@ describe('theme registry', () => {
       expect(theme.components.button.primaryBg).toBeTruthy()
       expect(Object.keys(theme.assets.categoryIcons).length).toBeGreaterThan(0)
     }
+  })
+
+  it('uses patchwork as the default fallback theme', () => {
+    expect(defaultTheme.id).toBe('patchwork')
+    expect(themes[0]?.id).toBe('patchwork')
+    expect(getThemeById('missing-theme').id).toBe('patchwork')
+  })
+
+  it('marks only the legacy bundled themes as legacy', () => {
+    const legacyThemeIds = themes.filter((theme) => theme.meta.legacy).map((theme) => theme.id)
+
+    expect(legacyThemeIds).toEqual(['legend', 'foundry'])
   })
 })

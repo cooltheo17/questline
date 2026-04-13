@@ -13,6 +13,7 @@ export const legendTheme: AppTheme = {
     name: 'Questline',
     description: 'Soft stone, steel blue, brass, and parchment.',
     colorScheme: 'light',
+    legacy: true,
   },
   primitives: {
     color: {
