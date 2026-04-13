@@ -1,5 +1,5 @@
 import type { SyncState } from 'dexie-cloud-addon'
-import { db, DEXIE_CLOUD_DATABASE_URL, DEXIE_CLOUD_ENABLED } from './db'
+import { db, DEXIE_CLOUD_ACTIVE_FOR_DEVICE, DEXIE_CLOUD_DATABASE_URL, DEXIE_CLOUD_ENABLED } from './db'
 import { useSyncStore } from '../state/syncStore'
 import { useUiStore } from '../state/uiStore'
 
@@ -10,7 +10,6 @@ export const cloudDatabaseHost = DEXIE_CLOUD_DATABASE_URL ? new URL(DEXIE_CLOUD_
 let backgroundSyncIntervalId: number | undefined
 let hasInitializedCloudSync = false
 let lastKnownLoginState = false
-let hasConfiguredCloud = false
 let activeSyncPromise: Promise<boolean> | null = null
 let activeSyncKind: 'manual' | 'background' | null = null
 let activeSyncToken: symbol | null = null
@@ -39,21 +38,9 @@ export function isCloudEnabledForDevice(): boolean {
 }
 
 function ensureCloudConfigured(): boolean {
-  if (!isCloudAvailable) {
+  if (!isCloudAvailable || !DEXIE_CLOUD_ACTIVE_FOR_DEVICE) {
     return false
   }
-
-  if (!hasConfiguredCloud) {
-    db.cloud.configure({
-      databaseUrl: DEXIE_CLOUD_DATABASE_URL,
-      requireAuth: false,
-      disableEagerSync: true,
-      disableWebSocket: true,
-    })
-
-    hasConfiguredCloud = true
-  }
-
   return true
 }
 
@@ -185,12 +172,20 @@ export async function loginToCloud(): Promise<void> {
     return
   }
 
-  useSyncStore.getState().setCloudSyncEnabled(true)
   initializeCloudSync()
   useSyncStore.getState().setError(undefined)
   await db.cloud.login()
   updateBackgroundSyncLoop()
   await syncNow()
+}
+
+export function enableCloudSyncOnDevice(): void {
+  if (!isCloudAvailable || typeof window === 'undefined') {
+    return
+  }
+
+  useSyncStore.getState().setCloudSyncEnabled(true)
+  window.location.reload()
 }
 
 export async function logoutFromCloud(): Promise<void> {
@@ -204,7 +199,7 @@ export async function logoutFromCloud(): Promise<void> {
   useSyncStore.getState().setLastSyncedAt(undefined)
   stopBackgroundSyncLoop()
 
-  if (hasConfiguredCloud && isLoggedIn()) {
+  if (isLoggedIn()) {
     await db.cloud.logout()
   }
 

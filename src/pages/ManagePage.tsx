@@ -28,6 +28,7 @@ import {
 import { exportSnapshot } from '../data/backup'
 import {
   cloudDatabaseHost,
+  enableCloudSyncOnDevice,
   formatSyncPhase,
   isCloudAvailable,
   isCloudEnabledForDevice,
@@ -841,6 +842,11 @@ export function ManagePage() {
                     ) : (
                       <Button
                         onClick={() => {
+                          if (!cloudEnabledForDevice) {
+                            enableCloudSyncOnDevice()
+                            return
+                          }
+
                           void loginToCloud()
                             .then(() => setMessage('Signed in and synced with Dexie Cloud.'))
                             .catch((error: unknown) => {
