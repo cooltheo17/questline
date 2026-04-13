@@ -44,7 +44,9 @@ describe('repository flows', () => {
 
     expect(completion?.xpAwarded).toBe(10)
     expect(completion?.coinsAwarded).toBe(2)
+    expect(completion?.id).toBe(`completion:${task!.id}:${task!.id}`)
     expect(transactions).toHaveLength(1)
+    expect(transactions[0]?.id).toBe(`task_reward:${completion!.id}`)
   })
 
   it('waits for the last subtask before awarding rewards', async () => {
@@ -176,6 +178,7 @@ describe('repository flows', () => {
     await completeQuest(quest!)
 
     expect(await db.walletTransactions.where('type').equals('quest_reward').count()).toBe(1)
+    expect((await db.walletTransactions.where('type').equals('quest_reward').first())?.id).toBe(`quest_reward:${quest!.id}`)
     const stored = await db.quests.get(quest!.id)
     expect(stored?.completedAt).toBeTruthy()
   })

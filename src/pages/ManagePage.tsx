@@ -10,6 +10,7 @@ import { TagIcon } from '@phosphor-icons/react/dist/csr/Tag'
 import { TrashIcon } from '@phosphor-icons/react/dist/csr/Trash'
 import { UploadSimpleIcon } from '@phosphor-icons/react/dist/csr/UploadSimple'
 import { FlagBannerIcon } from '@phosphor-icons/react/dist/csr/FlagBanner'
+import { useObservable } from 'dexie-react-hooks'
 import { categoryColorOptions } from '../domain/categories'
 import {
   Badge,
@@ -26,6 +27,18 @@ import {
 } from '../components/primitives/Primitives'
 import { exportSnapshot } from '../data/backup'
 import {
+  cloudDatabaseHost,
+  formatSyncPhase,
+  isCloudAvailable,
+  isCloudEnabledForDevice,
+  loginToCloud,
+  logoutFromCloud,
+  setBackgroundSyncEnabled,
+  syncNow,
+  SYNC_INTERVAL_MS,
+} from '../data/cloud'
+import { db } from '../data/db'
+import {
   createCategory,
   createQuest,
   deleteCategory,
@@ -41,6 +54,7 @@ import {
   updateTask,
 } from '../data/repository'
 import { useAppCollectionsContext } from '../hooks/AppCollectionsContext'
+import { useSyncStore } from '../state/syncStore'
 import { useTheme } from '../theme/themeContext'
 import type { Category, Quest, RewardItem, Task } from '../domain/types'
 import styles from './Page.module.css'
@@ -81,6 +95,19 @@ function formatBulkImportLabel(createdAt: string): string {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(createdAt))
+}
+
+function formatSyncTimestamp(value: string | undefined): string {
+  if (!value) {
+    return 'Never'
+  }
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
 }
 
 function getBulkImportSummaries(tasks: Task[], quests: Quest[], categories: Category[]) {
@@ -163,6 +190,13 @@ function getBulkImportSummaries(tasks: Task[], quests: Quest[], categories: Cate
 export function ManagePage() {
   const { categories, tasks, quests, rewards } = useAppCollectionsContext()
   const { theme, themes, setThemeId } = useTheme()
+  const currentUser = useObservable(db.cloud.currentUser)
+  const syncState = useObservable(db.cloud.syncState)
+  const cloudSyncEnabled = useSyncStore((state) => state.cloudSyncEnabled)
+  const backgroundSyncEnabled = useSyncStore((state) => state.backgroundSyncEnabled)
+  const lastSyncedAt = useSyncStore((state) => state.lastSyncedAt)
+  const syncKind = useSyncStore((state) => state.syncKind)
+  const syncError = useSyncStore((state) => state.error)
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window === 'undefined') {
       return 'categories'
@@ -181,6 +215,8 @@ export function ManagePage() {
   const scrollPositionRef = useRef(0)
   const hasMountedTabRef = useRef(false)
   const categoryOptions = categories.filter((category) => !category.archived)
+  const isSignedInToCloud = Boolean(currentUser?.isLoggedIn)
+  const cloudEnabledForDevice = cloudSyncEnabled || isCloudEnabledForDevice()
   const sortedTasks = [...tasks].sort((left, right) => {
     const createdAtComparison = left.createdAt.localeCompare(right.createdAt)
 
@@ -724,9 +760,14 @@ export function ManagePage() {
                         <h2 className={styles.themeCardTitle}>{candidate.meta.name}</h2>
                         <p className={styles.themeCardDescription}>{candidate.meta.description}</p>
                       </div>
-                      <span className={styles.themeCardMode}>
-                        {candidate.meta.colorScheme === 'dark' ? 'Dark' : 'Light'}
-                      </span>
+                      <div className={styles.themeCardBadges}>
+                        <span className={styles.themeCardMode}>
+                          {candidate.meta.colorScheme === 'dark' ? 'Dark' : 'Light'}
+                        </span>
+                        {candidate.meta.legacy ? (
+                          <span className={styles.themeCardLegacy}>Legacy</span>
+                        ) : null}
+                      </div>
                     </div>
                     {theme.id === candidate.id ? (
                       <span className={styles.themeCardSelected}>
@@ -742,6 +783,98 @@ export function ManagePage() {
         </TabPanel>
 
         <TabPanel value="data">
+          <Card>
+            <div data-slot="section-panel" className={sharedStyles.panel}>
+              <h2 data-slot="section-heading" className={sharedStyles.heading}>
+                <span className={sharedStyles.headingInline}>
+                  <DatabaseIcon aria-hidden="true" size={20} weight="duotone" />
+                  <span>Cloud sync</span>
+                </span>
+              </h2>
+              {isCloudAvailable ? (
+                <>
+                  <p data-slot="muted-text" className={sharedStyles.muted}>
+                    Database: {cloudDatabaseHost}
+                  </p>
+                  <p data-slot="muted-text" className={sharedStyles.muted}>
+                    Account: {isSignedInToCloud ? currentUser?.email ?? currentUser?.userId ?? 'Signed in' : 'Not signed in'}
+                  </p>
+                  <p data-slot="muted-text" className={sharedStyles.muted}>
+                    Status: {!cloudEnabledForDevice
+                      ? 'Local-only mode'
+                      : syncKind === 'manual'
+                        ? 'Manual sync in progress'
+                        : syncKind === 'background'
+                          ? 'Refreshing from cloud'
+                          : formatSyncPhase(syncState)}
+                  </p>
+                  <p data-slot="muted-text" className={sharedStyles.muted}>
+                    Last sync: {cloudEnabledForDevice ? formatSyncTimestamp(lastSyncedAt) : 'Cloud sync not enabled on this device'}
+                  </p>
+                  <Checkbox
+                    checked={backgroundSyncEnabled}
+                    disabled={!cloudEnabledForDevice}
+                    onCheckedChange={(checked) => {
+                      void setBackgroundSyncEnabled(checked)
+                    }}
+                    label={`Background sync every ${Math.round(SYNC_INTERVAL_MS / 1000)} seconds`}
+                  />
+                  {!cloudEnabledForDevice ? (
+                    <p data-slot="muted-text" className={sharedStyles.muted}>
+                      This device stays fully local until you sign in. No Dexie Cloud sync requests are made before that.
+                    </p>
+                  ) : null}
+                  <div data-slot="action-group" className={sharedStyles.actions}>
+                    {isSignedInToCloud ? (
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          void logoutFromCloud()
+                            .then(() => setMessage('Signed out from Dexie Cloud.'))
+                            .catch((error: unknown) => {
+                              setMessage(error instanceof Error ? error.message : 'Could not sign out from Dexie Cloud.')
+                            })
+                        }}
+                      >
+                        Sign out
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => {
+                          void loginToCloud()
+                            .then(() => setMessage('Signed in and synced with Dexie Cloud.'))
+                            .catch((error: unknown) => {
+                              setMessage(error instanceof Error ? error.message : 'Could not sign in to Dexie Cloud.')
+                            })
+                        }}
+                      >
+                        {cloudEnabledForDevice ? 'Sign in' : 'Enable cloud sync'}
+                      </Button>
+                    )}
+                    <Button
+                      variant="secondary"
+                      disabled={!cloudEnabledForDevice || !isSignedInToCloud || syncKind === 'manual'}
+                      onClick={() => {
+                        void syncNow().then((didSync) => {
+                          if (didSync) {
+                            setMessage('Cloud sync complete.')
+                          }
+                        })
+                      }}
+                    >
+                      Sync now
+                    </Button>
+                  </div>
+                  {syncError ? <p data-slot="muted-text" className={sharedStyles.muted}>{syncError}</p> : null}
+                </>
+              ) : (
+                <p data-slot="muted-text" className={sharedStyles.muted}>
+                  Set `VITE_DEXIE_CLOUD_DB_URL` to enable cloud sync in this app and on Vercel.
+                </p>
+              )}
+            </div>
+          </Card>
+
           <Card>
             <div data-slot="section-panel" className={sharedStyles.panel}>
               <h2 data-slot="section-heading" className={sharedStyles.heading}>
@@ -763,14 +896,14 @@ export function ManagePage() {
                     <span>Import JSON</span>
                   </span>
                 </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    if (window.confirm('Reset all local data? This cannot be undone.')) {
-                      void resetAllData().then(() => setMessage('All data reset to seed state.'))
-                    }
-                  }}
-                >
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        if (window.confirm('Reset all local data? This cannot be undone.')) {
+                          void resetAllData().then(() => setMessage('All local data reset.'))
+                        }
+                      }}
+                    >
                   <span className={sharedStyles.inlineLabel}>
                     <TrashIcon aria-hidden="true" size={16} weight="bold" />
                     <span>Reset everything</span>

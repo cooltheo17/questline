@@ -1,5 +1,9 @@
 import Dexie, { type EntityTable } from 'dexie'
+import dexieCloud from 'dexie-cloud-addon'
 import type { Category, CompletionRecord, Quest, RewardItem, Task, WalletTransaction } from '../domain/types'
+
+export const DEXIE_CLOUD_DATABASE_URL = import.meta.env.VITE_DEXIE_CLOUD_DB_URL?.trim() ?? ''
+export const DEXIE_CLOUD_ENABLED = Boolean(DEXIE_CLOUD_DATABASE_URL) && import.meta.env.MODE !== 'test'
 
 class TodoDatabase extends Dexie {
   categories!: EntityTable<Category, 'id'>
@@ -10,7 +14,7 @@ class TodoDatabase extends Dexie {
   walletTransactions!: EntityTable<WalletTransaction, 'id'>
 
   constructor() {
-    super('questline')
+    super('questline', { addons: [dexieCloud] })
 
     this.version(1).stores({
       categories: '&id, sortOrder, archived',
@@ -60,6 +64,15 @@ class TodoDatabase extends Dexie {
       completions: '&id, taskId, occurrenceKey, completedAt',
       rewards: '&id, archived, createdAt',
       walletTransactions: '&id, sourceId, type, createdAt',
+    })
+
+    this.version(5).stores({
+      categories: 'id, sortOrder, archived, importBatchId',
+      tasks: 'id, *categoryIds, questId, cadence, active, sortOrder, createdAt, archivedAt, importBatchId',
+      quests: 'id, sortOrder, archived, completedAt, importBatchId',
+      completions: 'id, taskId, occurrenceKey, completedAt',
+      rewards: 'id, archived, createdAt',
+      walletTransactions: 'id, sourceId, type, createdAt',
     })
   }
 }

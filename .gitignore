@@ -25,3 +25,7 @@ playwright-report
 *.njsproj
 *.sln
 *.sw?
+
+# Dexie Cloud local project config
+dexie-cloud.json
+dexie-cloud.key

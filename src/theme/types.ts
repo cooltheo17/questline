@@ -5,6 +5,7 @@ export interface AppTheme {
     name: string
     description: string
     colorScheme: 'light' | 'dark'
+    legacy?: boolean
   }
   primitives: {
     color: Record<string, string>

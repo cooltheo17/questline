@@ -321,7 +321,17 @@ export function Toast({
       duration={duration}
       className={styles.toastRoot}
     >
-      <ToastPrimitive.Title data-slot="toast-title" className={styles.toastTitle}>{title}</ToastPrimitive.Title>
+      <div className={styles.toastHeader}>
+        <ToastPrimitive.Title data-slot="toast-title" className={styles.toastTitle}>{title}</ToastPrimitive.Title>
+        <button
+          type="button"
+          aria-label="Dismiss notification"
+          className={styles.toastClose}
+          onClick={() => onOpenChange(false)}
+        >
+          ×
+        </button>
+      </div>
       <div className={styles.toastBody}>
         <ToastPrimitive.Description data-slot="toast-description" className={styles.toastDescription}>
           {description}

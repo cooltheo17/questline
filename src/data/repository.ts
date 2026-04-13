@@ -30,6 +30,18 @@ function createId(): string {
   return crypto.randomUUID()
 }
 
+function createCompletionId(taskId: string, occurrenceKey: string): string {
+  return `completion:${taskId}:${occurrenceKey}`
+}
+
+function createTaskRewardTransactionId(completionId: string): string {
+  return `task_reward:${completionId}`
+}
+
+function createQuestRewardTransactionId(questId: string): string {
+  return `quest_reward:${questId}`
+}
+
 function normalizeDueDate(value: string | undefined): string | undefined {
   const nextValue = value?.trim()
   return nextValue ? nextValue : undefined
@@ -350,8 +362,8 @@ async function saveCompletionReward(task: Task, completion: CompletionRecord, wh
 
   await db.transaction('rw', db.completions, db.walletTransactions, async () => {
     await db.completions.put(completion)
-    await db.walletTransactions.add({
-      id: createId(),
+    await db.walletTransactions.put({
+      id: createTaskRewardTransactionId(completion.id),
       type: 'task_reward',
       amount: reward.coins,
       sourceId: completion.id,
@@ -374,7 +386,7 @@ export async function completeTask(task: Task, when = new Date()): Promise<void>
 
   const completion: CompletionRecord =
     existing ?? {
-      id: createId(),
+      id: createCompletionId(task.id, getOccurrenceKey(task, when)),
       taskId: task.id,
       occurrenceKey: getOccurrenceKey(task, when),
       completedSubtaskIds: [],
@@ -395,7 +407,7 @@ export async function toggleSubtask(task: Task, subtaskId: string, when = new Da
 
   const completion: CompletionRecord =
     existing ?? {
-      id: createId(),
+      id: createCompletionId(task.id, getOccurrenceKey(task, when)),
       taskId: task.id,
       occurrenceKey: getOccurrenceKey(task, when),
       completedSubtaskIds: [],
@@ -498,8 +510,8 @@ export async function completeQuest(quest: Quest, when = new Date()): Promise<vo
     await db.quests.update(current.id, { completedAt: when.toISOString() })
 
     if (current.rewardCoins > 0) {
-      await db.walletTransactions.add({
-        id: createId(),
+      await db.walletTransactions.put({
+        id: createQuestRewardTransactionId(current.id),
         type: 'quest_reward',
         amount: current.rewardCoins,
         sourceId: current.id,

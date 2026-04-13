@@ -13,6 +13,7 @@ export const foundryTheme: AppTheme = {
     name: 'Foundry',
     description: 'Graphite, steel, restrained brass, and a proper dark canvas.',
     colorScheme: 'dark',
+    legacy: true,
   },
   primitives: {
     color: {

@@ -449,6 +449,13 @@
   align-items: start;
 }
 
+.themeCardBadges {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .themeCardTitle {
   margin: 0;
   font-family: var(--theme-font-display);
@@ -465,6 +472,7 @@
 }
 
 .themeCardMode,
+.themeCardLegacy,
 .themeCardSelected {
   display: inline-flex;
   align-items: center;
@@ -481,6 +489,12 @@
   border: 1px solid color-mix(in srgb, var(--theme-semantic-border-subtle) 85%, transparent);
   background: color-mix(in srgb, var(--theme-semantic-surface-raised) 82%, transparent);
   color: var(--theme-semantic-text-secondary);
+}
+
+.themeCardLegacy {
+  border: 1px solid color-mix(in srgb, var(--theme-semantic-warning) 26%, transparent);
+  background: color-mix(in srgb, var(--theme-semantic-warning) 10%, transparent);
+  color: color-mix(in srgb, var(--theme-semantic-warning) 74%, var(--theme-semantic-text-primary));
 }
 
 .themeCardSelected {
