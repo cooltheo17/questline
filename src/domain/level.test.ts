@@ -22,4 +22,12 @@ describe('level progression', () => {
       nextLevelXp: 100,
     })
   })
+
+  it('handles extremely large XP values without changing the progression curve', () => {
+    expect(getLevelFromXp(1_000_000_000_000)).toEqual({
+      level: 282842,
+      currentLevelXp: 1502450,
+      nextLevelXp: 7071075,
+    })
+  })
 })
