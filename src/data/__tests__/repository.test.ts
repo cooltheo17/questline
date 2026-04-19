@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { parseBulkImportInput } from '../domain/bulkAdd'
-import { db } from './db'
+import { parseBulkImportInput } from '../../domain/bulkAdd'
+import { db } from '../db'
 import {
   completeTask,
   completeQuest,
@@ -17,7 +17,7 @@ import {
   createReward,
   toggleSubtask,
   undoBulkImport,
-} from './repository'
+} from '../repository'
 
 describe('repository flows', () => {
   beforeEach(async () => {

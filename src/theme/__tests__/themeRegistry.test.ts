@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defaultTheme, getThemeById, themes } from './themeRegistry'
+import { defaultTheme, getThemeById, themes } from '../themeRegistry'
 
 describe('theme registry', () => {
   it('ships themes that satisfy the contract shape', () => {

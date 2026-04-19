@@ -34,6 +34,7 @@ import { getQuestProgress, getQuestTasks } from '../domain/quests'
 import { useAppCollectionsContext } from '../hooks/AppCollectionsContext'
 import { useTheme } from '../theme/themeContext'
 import { useUiStore } from '../state/uiStore'
+import { preloadQuestPage } from '../app/routeLoaders'
 import type { Category, CompletionRecord, Task } from '../domain/types'
 import type { TodayTaskGroupKey } from '../domain/selectors'
 import styles from './Page.module.css'
@@ -376,6 +377,9 @@ export function TodayPage() {
                       type="button"
                       className={styles.questItem}
                       onClick={() => navigate(`/quests/${quest.id}`)}
+                      onMouseEnter={() => void preloadQuestPage()}
+                      onFocus={() => void preloadQuestPage()}
+                      onTouchStart={() => void preloadQuestPage()}
                     >
                       <div className={styles.questArt} aria-hidden="true">
                         {quest.imageUrl ? (

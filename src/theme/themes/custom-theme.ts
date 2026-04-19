@@ -84,7 +84,7 @@ export const patchworkTheme: AppTheme = {
       padding: 0.15rem 1.5rem 1.5rem;
       border: 1px solid color-mix(in srgb, var(--theme-semantic-text-primary) 18%, transparent);
       border-radius: var(--theme-radius-lg);
-      background: color-mix(in srgb, var(--theme-semantic-surface-raised) 92%, transparent);
+      background: var(--theme-semantic-surface-raised);
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
     }
 
@@ -213,7 +213,7 @@ export const patchworkTheme: AppTheme = {
     }
 
     html[data-theme='patchwork'] [data-slot='button'][data-variant='secondary'] {
-      background: color-mix(in srgb, var(--theme-semantic-surface-raised) 88%, transparent);
+      background: var(--theme-semantic-surface-raised);
       border-color: color-mix(in srgb, var(--theme-semantic-text-primary) 22%, transparent);
       color: var(--theme-semantic-text-primary);
     }
@@ -232,7 +232,7 @@ export const patchworkTheme: AppTheme = {
       display: inline-flex;
       justify-content: center;
       align-items: center;
-      background: color-mix(in srgb, var(--theme-semantic-surface-raised) 86%, transparent);
+      background: var(--theme-semantic-surface-raised);
       border-color: color-mix(in srgb, var(--theme-semantic-text-primary) 16%, transparent);
       color: #5d483a;
       font-size: 0.72rem;
@@ -414,7 +414,7 @@ export const patchworkTheme: AppTheme = {
       padding: 1rem 1.15rem 1rem 1.05rem;
       border: 1px solid color-mix(in srgb, var(--theme-semantic-text-primary) 18%, transparent);
       border-radius: var(--theme-radius-md);
-      background: color-mix(in srgb, var(--theme-semantic-surface-raised) 94%, transparent);
+      background: var(--theme-semantic-surface-raised);
     }
 
     html[data-theme='patchwork'] [data-slot='reward-card'] [data-slot='section-title'] {
@@ -442,7 +442,7 @@ export const patchworkTheme: AppTheme = {
       padding: 0.95rem 1rem;
       border: 1px solid color-mix(in srgb, var(--theme-semantic-text-primary) 18%, transparent);
       border-radius: var(--theme-radius-md);
-      background: color-mix(in srgb, var(--theme-semantic-surface-raised) 94%, transparent);
+      background: var(--theme-semantic-surface-raised);
     }
 
     html[data-theme='patchwork'] [data-slot='category-item'] [data-slot='action-group'] {
@@ -453,7 +453,7 @@ export const patchworkTheme: AppTheme = {
       border: 1px solid color-mix(in srgb, var(--theme-semantic-text-primary) 14%, transparent);
       border-radius: var(--theme-radius-md);
       padding: 0.8rem;
-      background: color-mix(in srgb, var(--theme-semantic-surface-raised) 92%, transparent);
+      background: var(--theme-semantic-surface-raised);
     }
 
     @media (max-width: 1020px) {
@@ -557,7 +557,7 @@ export const patchworkTheme: AppTheme = {
     shell: {
       pageBackground:
         'linear-gradient(90deg, transparent 0, transparent 4.5rem, rgba(199, 91, 66, 0.18) 4.5rem, rgba(199, 91, 66, 0.18) 4.64rem, transparent 4.64rem), repeating-linear-gradient(180deg, rgba(70, 52, 40, 0.08) 0, rgba(70, 52, 40, 0.08) 1px, transparent 1px, transparent 2.3rem), linear-gradient(180deg, #f3e8db 0%, #eadccb 100%)',
-      panelBackground: 'rgba(255, 249, 240, 0.95)',
+      panelBackground: '#fff9f0',
     },
     taskCard: {
       background: '#fff9f0',

@@ -10,6 +10,78 @@
   align-items: start;
 }
 
+.manageLayout {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1.28fr) minmax(19rem, 0.82fr);
+  align-items: start;
+}
+
+.manageMain,
+.manageRail {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.manageRail {
+  position: sticky;
+  top: 1rem;
+}
+
+.manageRailCard {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.manageRailHeader {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.manageRailTitle {
+  margin: 0;
+  font-family: var(--theme-font-display);
+  color: var(--theme-semantic-text-primary);
+  font-size: 1.05rem;
+  line-height: 1.15;
+}
+
+.manageRailDescription {
+  color: var(--theme-semantic-text-secondary);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.manageMetricList {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+}
+
+.manageMetric {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.8rem 0.85rem;
+  border-radius: var(--theme-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--theme-semantic-border-subtle) 78%, transparent);
+  background: color-mix(in srgb, var(--theme-semantic-surface-raised) 78%, transparent);
+}
+
+.manageMetricLabel {
+  color: var(--theme-semantic-text-secondary);
+  font-size: 0.76rem;
+  line-height: 1.1;
+}
+
+.manageMetricValue {
+  margin: 0;
+  color: var(--theme-semantic-text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
 .stack {
   display: grid;
   gap: 1rem;
@@ -672,10 +744,15 @@
 }
 
 @media (max-width: 1020px) {
+  .manageLayout,
   .columns,
   .featureGrid,
   .themeSceneBody {
     grid-template-columns: 1fr;
+  }
+
+  .manageRail {
+    position: static;
   }
 
   .themeGallery {

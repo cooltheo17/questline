@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getLevelFromXp, getLevelThreshold } from './level'
+import { getLevelFromXp, getLevelThreshold } from '../level'
 
 describe('level progression', () => {
   it('uses the intended threshold curve', () => {

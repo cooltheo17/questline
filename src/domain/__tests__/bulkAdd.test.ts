@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseBulkImportInput } from './bulkAdd'
+import { parseBulkImportInput } from '../bulkAdd'
 
 const categories = [
   {

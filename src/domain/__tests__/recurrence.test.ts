@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { getOccurrenceKey, getOccurrenceWindow, isTaskDueToday } from './recurrence'
-import type { Task } from './types'
+import { getOccurrenceKey, getOccurrenceWindow, isTaskDueToday } from '../recurrence'
+import type { Task } from '../types'
 
 const weeklyTask: Task = {
   id: 'weekly-task',
