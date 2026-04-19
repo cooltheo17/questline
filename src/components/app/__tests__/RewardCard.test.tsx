@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { RewardCard } from './RewardCard'
+import { RewardCard } from '../RewardCard'
 
 describe('RewardCard', () => {
   it('disables the purchase button when coins are insufficient', () => {

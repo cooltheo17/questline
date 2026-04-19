@@ -36,12 +36,16 @@ body,
   min-height: 100%;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   margin: 0;
   background: var(--theme-shell-page-background, #f2ebdc);
   color: var(--theme-semantic-text-primary, #201e1a);
   font:
-    16px/1.5 var(--theme-font-body, 'IBM Plex Sans', 'Inter', 'Helvetica Neue', sans-serif);
+    16px/1.5 var(--theme-font-body, 'Helvetica Neue', sans-serif);
 }
 
 button,

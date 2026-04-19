@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import { QuickAddComposer } from './QuickAddComposer'
+import { QuickAddComposer } from '../QuickAddComposer'
 
 describe('QuickAddComposer', () => {
   it('creates a task when Enter is pressed in collapsed mode', async () => {
@@ -44,7 +44,7 @@ describe('QuickAddComposer', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: /details/i }))
+    await user.click(screen.getByRole('button', { name: /options/i }))
     await user.click(screen.getByRole('button', { name: /paste json/i }))
     await user.click(screen.getByRole('textbox', { name: /json/i }))
     await user.paste('{"tasks":[{"title":"Break down taxes","subtasks":["Find P60","Book accountant"]}]}')

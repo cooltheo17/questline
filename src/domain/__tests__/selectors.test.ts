@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { getGroupedTodayTaskViews, getTaskIdsForTodayReorder, getTodayTaskViews } from './selectors'
-import type { Category, Task } from './types'
+import { getGroupedTodayTaskViews, getTaskIdsForTodayReorder, getTodayTaskViews } from '../selectors'
+import type { Category, Task } from '../types'
 
 function makeTask(id: string, sortOrder: number, cadence: Task['cadence'] = 'daily'): Task {
   return {

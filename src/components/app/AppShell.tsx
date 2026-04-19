@@ -1,18 +1,53 @@
+import { Suspense, useEffect } from 'react'
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { useTheme } from '../../theme/themeContext'
 import { ToastStack } from './ToastStack'
 import styles from './AppShell.module.css'
 import { TodayPage } from '../../pages/TodayPage'
-import { RewardsPage } from '../../pages/RewardsPage'
-import { ManagePage } from '../../pages/ManagePage'
-import { QuestPage } from '../../pages/QuestPage'
+import { Card } from '../primitives/Primitives'
+import {
+  ManagePageRoute,
+  preloadManagePage,
+  preloadQuestPage,
+  preloadRewardsPage,
+  QuestPageRoute,
+  RewardsPageRoute,
+} from '../../app/routeLoaders'
 
 function navClassName({ isActive }: { isActive: boolean }): string {
   return [styles.navLink, isActive ? styles.navLinkActive : ''].filter(Boolean).join(' ')
 }
 
+function prefetchRoute(loadRoute: () => Promise<void>): void {
+  void loadRoute()
+}
+
+function RouteLoadingFallback() {
+  return <Card>Loading…</Card>
+}
+
 export function AppShell() {
   const { theme } = useTheme()
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const warmRoutes = () => {
+      prefetchRoute(preloadRewardsPage)
+      prefetchRoute(preloadManagePage)
+      prefetchRoute(preloadQuestPage)
+    }
+
+    if (typeof window.requestIdleCallback === 'function') {
+      const idleId = window.requestIdleCallback(warmRoutes, { timeout: 1500 })
+      return () => window.cancelIdleCallback(idleId)
+    }
+
+    const timeoutId = globalThis.setTimeout(warmRoutes, 800)
+    return () => globalThis.clearTimeout(timeoutId)
+  }, [])
 
   return (
     <div className={styles.app} data-slot="app-shell">
@@ -26,10 +61,24 @@ export function AppShell() {
               <NavLink className={navClassName} data-slot="app-shell-nav-link" to="/today">
                 Today
               </NavLink>
-              <NavLink className={navClassName} data-slot="app-shell-nav-link" to="/rewards">
+              <NavLink
+                className={navClassName}
+                data-slot="app-shell-nav-link"
+                to="/rewards"
+                onMouseEnter={() => prefetchRoute(preloadRewardsPage)}
+                onFocus={() => prefetchRoute(preloadRewardsPage)}
+                onTouchStart={() => prefetchRoute(preloadRewardsPage)}
+              >
                 Rewards
               </NavLink>
-              <NavLink className={navClassName} data-slot="app-shell-nav-link" to="/manage">
+              <NavLink
+                className={navClassName}
+                data-slot="app-shell-nav-link"
+                to="/manage"
+                onMouseEnter={() => prefetchRoute(preloadManagePage)}
+                onFocus={() => prefetchRoute(preloadManagePage)}
+                onTouchStart={() => prefetchRoute(preloadManagePage)}
+              >
                 Manage
               </NavLink>
             </nav>
@@ -40,13 +89,15 @@ export function AppShell() {
         </header>
 
         <main className={styles.content} data-slot="app-shell-content">
-          <Routes>
-            <Route path="/" element={<Navigate replace to="/today" />} />
-            <Route path="/today" element={<TodayPage />} />
-            <Route path="/rewards" element={<RewardsPage />} />
-            <Route path="/manage" element={<ManagePage />} />
-            <Route path="/quests/:questId" element={<QuestPage />} />
-          </Routes>
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <Routes>
+              <Route path="/" element={<Navigate replace to="/today" />} />
+              <Route path="/today" element={<TodayPage />} />
+              <Route path="/rewards" element={<RewardsPageRoute />} />
+              <Route path="/manage" element={<ManagePageRoute />} />
+              <Route path="/quests/:questId" element={<QuestPageRoute />} />
+            </Routes>
+          </Suspense>
         </main>
       </div>
       <ToastStack />

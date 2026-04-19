@@ -15,10 +15,6 @@
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-semantic-accent) 12%, transparent);
 }
 
-.draggable {
-  cursor: grab;
-}
-
 .dragActive {
   border-color: var(--theme-semantic-accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-semantic-accent) 18%, transparent);
@@ -36,6 +32,13 @@
   align-items: start;
 }
 
+.primary {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  min-width: 0;
+}
+
 .tagList {
   display: flex;
   gap: 0.5rem;
@@ -43,9 +46,40 @@
   justify-content: end;
 }
 
+.dragHandle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  inline-size: 2rem;
+  block-size: 2rem;
+  margin: -0.2rem 0 0 -0.35rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--theme-radius-sm);
+  background: transparent;
+  color: var(--theme-semantic-text-secondary);
+  cursor: grab;
+}
+
+.dragHandle:hover {
+  background: color-mix(in srgb, var(--theme-semantic-text-primary) 6%, transparent);
+  color: var(--theme-semantic-text-primary);
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.dragHandle:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--theme-semantic-accent) 38%, transparent);
+  outline-offset: 2px;
+}
+
 .titleWrap {
   display: grid;
   gap: 0.35rem;
+  min-width: 0;
 }
 
 .title {
@@ -77,4 +111,23 @@
   gap: 0.8rem;
   flex-wrap: wrap;
   align-items: center;
+}
+
+.metaLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.5rem;
+  align-items: center;
+  color: var(--theme-semantic-text-secondary);
+  font-size: 0.84rem;
+}
+
+.metaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+}
+
+.metaDivider {
+  color: color-mix(in srgb, var(--theme-semantic-text-secondary) 68%, transparent);
 }

@@ -3,11 +3,12 @@ import { useEffect } from 'react'
 import { ThemeProvider } from '../theme/themeContext'
 import { AppShell } from '../components/app/AppShell'
 import { AppCollectionsProvider } from '../hooks/AppCollectionsContext'
-import { initializeCloudSync } from '../data/cloud'
 
 function AppBootstrap() {
   useEffect(() => {
-    initializeCloudSync()
+    void import('../data/cloud').then(({ initializeCloudSync }) => {
+      initializeCloudSync()
+    })
   }, [])
 
   return (

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { getQuestProgress, isQuestTaskComplete } from './quests'
-import type { CompletionRecord, Quest, Task } from './types'
+import { getQuestProgress, isQuestTaskComplete } from '../quests'
+import type { CompletionRecord, Quest, Task } from '../types'
 
 function makeQuest(): Quest {
   return {

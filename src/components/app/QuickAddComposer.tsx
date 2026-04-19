@@ -1,8 +1,18 @@
 import { useState } from 'react'
 import { BracketsCurlyIcon } from '@phosphor-icons/react/dist/csr/BracketsCurly'
+import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
+import { CaretRightIcon } from '@phosphor-icons/react/dist/csr/CaretRight'
 import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
 import { parseBulkImportInput, type BulkImportPlan } from '../../domain/bulkAdd'
 import type { BulkImportCommit } from '../../data/repository'
+import {
+  formatTaskReward,
+  getDefaultReward,
+  getRewardForMode,
+  getRewardOverrideForMode,
+  type TaskRewardMode,
+} from '../../domain/rewards'
+import { cadenceOptions, effortOptions } from '../../domain/taskUi'
 import {
   Badge,
   Button,
@@ -19,14 +29,9 @@ import type { Category, CreateTaskInput, Difficulty, Cadence, Quest } from '../.
 import styles from './QuickAddComposer.module.css'
 import sharedStyles from './Shared.module.css'
 
-const cadenceOptions = [
-  { label: 'One-off', value: 'none' },
-  { label: 'Daily', value: 'daily' },
-  { label: 'Weekly', value: 'weekly' },
-  { label: 'Monthly', value: 'monthly' },
-]
-
 function initialState(categoryId?: string) {
+  const defaultReward = getDefaultReward('small')
+
   return {
     title: '',
     categoryIds: categoryId ? [categoryId] : [],
@@ -35,8 +40,9 @@ function initialState(categoryId?: string) {
     cadence: 'none' as Cadence,
     difficulty: 'small' as Difficulty,
     notes: '',
-    xp: 10,
-    coins: 2,
+    rewardMode: 'match_difficulty' as TaskRewardMode,
+    customXp: defaultReward.xp,
+    customCoins: defaultReward.coins,
     subtasksText: '',
   }
 }
@@ -158,6 +164,10 @@ export function QuickAddComposer({
       .filter((quest) => !quest.archived)
       .map((quest) => ({ label: quest.title, value: quest.id })),
   ]
+  const selectedReward = getRewardForMode(state.rewardMode, state.difficulty, {
+    xp: state.customXp,
+    coins: state.customCoins,
+  })
 
   async function submitTask(expandedSubmit: boolean) {
     if (!state.title.trim()) {
@@ -173,7 +183,10 @@ export function QuickAddComposer({
       cadence: state.cadence,
       difficulty: state.difficulty,
       notes: state.notes,
-      rewardOverride: { xp: state.xp, coins: state.coins },
+      rewardOverride: getRewardOverrideForMode(state.rewardMode, state.difficulty, {
+        xp: state.customXp,
+        coins: state.customCoins,
+      }),
       subtasks: state.subtasksText.split('\n'),
     })
 
@@ -191,6 +204,30 @@ export function QuickAddComposer({
       return {
         ...current,
         categoryIds: nextIds,
+      }
+    })
+  }
+
+  function handleEffortChange(value: string) {
+    if (value === 'custom') {
+      setState((current) => ({
+        ...current,
+        rewardMode: 'custom',
+        customXp: 0,
+        customCoins: 0,
+      }))
+      return
+    }
+
+    const nextDifficulty = value as Difficulty
+    setState((current) => {
+      const nextDefaultReward = getDefaultReward(nextDifficulty)
+      return {
+        ...current,
+        difficulty: nextDifficulty,
+        rewardMode: 'match_difficulty',
+        customXp: nextDefaultReward.xp,
+        customCoins: nextDefaultReward.coins,
       }
     })
   }
@@ -270,8 +307,20 @@ export function QuickAddComposer({
                 }}
               />
             </Field>
-            <Button type="button" variant="secondary" onClick={() => setExpanded((current) => !current)}>
-              {expanded ? 'Hide details' : 'Details'}
+            <Button
+              type="button"
+              variant="secondary"
+              aria-expanded={expanded}
+              onClick={() => setExpanded((current) => !current)}
+            >
+              <span className={sharedStyles.inlineLabel}>
+                {expanded ? (
+                  <CaretDownIcon aria-hidden="true" size={16} weight="bold" />
+                ) : (
+                  <CaretRightIcon aria-hidden="true" size={16} weight="bold" />
+                )}
+                <span>Options</span>
+              </span>
             </Button>
             <Button type="submit">
               <span className={sharedStyles.inlineLabel}>
@@ -283,28 +332,50 @@ export function QuickAddComposer({
 
           {expanded ? (
             <div className={styles.details}>
-              <div className={styles.metricsRow}>
-                <Field label="XP">
-                  <TextField
-                    inputMode="numeric"
-                    value={String(state.xp)}
-                    onChange={(event) =>
-                      setState((current) => ({ ...current, xp: Number(event.target.value) || 0 }))
-                    }
-                  />
-                </Field>
-                <Field label="Coins">
-                  <TextField
-                    inputMode="numeric"
-                    value={String(state.coins)}
-                    onChange={(event) =>
-                      setState((current) => ({ ...current, coins: Number(event.target.value) || 0 }))
-                    }
-                  />
-                </Field>
-              </div>
-
               <div className={styles.configRow}>
+                <Field label="Effort">
+                  <Select
+                    value={state.rewardMode === 'custom' ? 'custom' : state.difficulty}
+                    onValueChange={handleEffortChange}
+                    options={effortOptions}
+                  />
+                </Field>
+                <Field label="Reward">
+                  {state.rewardMode === 'custom' ? (
+                    <div className={styles.rewardInputGrid}>
+                      <TextField
+                        aria-label="Custom XP"
+                        inputMode="numeric"
+                        placeholder="XP"
+                        value={state.customXp === 0 ? '' : String(state.customXp)}
+                        onChange={(event) =>
+                          setState((current) => ({
+                            ...current,
+                            customXp: Number(event.target.value) || 0,
+                          }))
+                        }
+                      />
+                      <TextField
+                        aria-label="Custom coins"
+                        inputMode="numeric"
+                        placeholder="Coins"
+                        value={state.customCoins === 0 ? '' : String(state.customCoins)}
+                        onChange={(event) =>
+                          setState((current) => ({
+                            ...current,
+                            customCoins: Number(event.target.value) || 0,
+                          }))
+                        }
+                      />
+                    </div>
+                  ) : (
+                    <div className={styles.rewardField}>
+                      <span data-slot="muted-text" className={sharedStyles.muted}>
+                        {formatTaskReward(selectedReward)}
+                      </span>
+                    </div>
+                  )}
+                </Field>
                 <Field label="Due date">
                   <TextField
                     type="date"
