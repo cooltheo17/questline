@@ -51,4 +51,35 @@ describe('TaskCard', () => {
 
     expect(screen.queryByRole('button', { name: /drag to reorder/i })).not.toBeInTheDocument()
   })
+
+  it('counts only current subtasks in the progress label', () => {
+    render(
+      <ThemeProvider>
+        <TaskCard
+          task={{
+            ...task,
+            subtasks: Array.from({ length: 6 }, (_, index) => ({
+              id: `subtask-${index + 1}`,
+              title: `Subtask ${index + 1}`,
+              sortOrder: index,
+            })),
+          }}
+          categories={[]}
+          completion={{
+            id: 'completion-1',
+            taskId: task.id,
+            occurrenceKey: '2026-04-20',
+            completedSubtaskIds: ['stale-1', 'stale-2', 'stale-3', 'subtask-1'],
+            xpAwarded: 0,
+            coinsAwarded: 0,
+          }}
+          isCompleted={false}
+          onComplete={vi.fn().mockResolvedValue(undefined)}
+          onToggleSubtask={vi.fn().mockResolvedValue(undefined)}
+        />
+      </ThemeProvider>,
+    )
+
+    expect(screen.getByText('1/6 steps')).toBeInTheDocument()
+  })
 })

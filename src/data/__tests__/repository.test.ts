@@ -17,6 +17,7 @@ import {
   createReward,
   toggleSubtask,
   undoBulkImport,
+  updateTask,
 } from '../repository'
 
 describe('repository flows', () => {
@@ -75,6 +76,48 @@ describe('repository flows', () => {
     expect(completion?.completedAt).toBeTruthy()
     expect(completion?.xpAwarded).toBe(10)
     expect(await db.walletTransactions.count()).toBe(1)
+  })
+
+  it('preserves matching subtask ids and removes stale completion ids on task update', async () => {
+    await createTask({
+      title: 'Take vitamins',
+      categoryIds: [],
+      cadence: 'daily',
+      difficulty: 'small',
+      subtasks: ['Vitamin D', 'Magnesium', 'Omega 3'],
+    })
+
+    const task = await db.tasks.toCollection().first()
+    expect(task).toBeTruthy()
+
+    await db.completions.put({
+      id: `completion:${task!.id}:2026-04-20`,
+      taskId: task!.id,
+      occurrenceKey: '2026-04-20',
+      completedSubtaskIds: ['stale-1', task!.subtasks[0].id, 'stale-2'],
+      xpAwarded: 0,
+      coinsAwarded: 0,
+    })
+
+    await updateTask({
+      id: task!.id,
+      title: task!.title,
+      categoryIds: task!.categoryIds,
+      questId: task!.questId,
+      dueDate: task!.dueDate,
+      cadence: task!.cadence,
+      difficulty: task!.difficulty,
+      notes: task!.notes,
+      rewardOverride: task!.rewardOverride,
+      subtasks: task!.subtasks.map((subtask) => subtask.title),
+      active: task!.active,
+    })
+
+    const updatedTask = await db.tasks.get(task!.id)
+    const completion = await db.completions.toCollection().first()
+
+    expect(updatedTask?.subtasks[0]?.id).toBe(task!.subtasks[0].id)
+    expect(completion?.completedSubtaskIds).toEqual([task!.subtasks[0].id])
   })
 
   it('removes completion history and linked reward transaction together', async () => {

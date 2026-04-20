@@ -134,7 +134,7 @@ export const patchworkTheme: AppTheme = {
     }
 
     html[data-theme='patchwork'] [data-slot='section-title'] {
-      align-items: end;
+      align-items: flex-start;
       padding-bottom: 0.1rem;
     }
 

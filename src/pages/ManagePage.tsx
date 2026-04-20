@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useObservable } from 'dexie-react-hooks'
+import { GearSixIcon } from '@phosphor-icons/react/dist/csr/GearSix'
 import { Tabs, TabPanel } from '../components/primitives/Primitives'
+import { SectionHeading } from '../components/app/SectionHeading'
 import { exportSnapshot } from '../data/backup'
 import {
   SYNC_INTERVAL_MS,
@@ -175,6 +177,10 @@ export function ManagePage() {
 
   return (
     <div data-slot="page" className={styles.page}>
+      <SectionHeading
+        icon={<GearSixIcon aria-hidden="true" size={20} weight="duotone" />}
+        title="Manage"
+      />
       <Tabs
         value={activeTab}
         onValueChange={(value) => {
