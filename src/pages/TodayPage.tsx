@@ -1,5 +1,5 @@
 import { AnimatePresence } from 'framer-motion'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowCounterClockwiseIcon } from '@phosphor-icons/react/dist/csr/ArrowCounterClockwise'
 import { CalendarDotsIcon } from '@phosphor-icons/react/dist/csr/CalendarDots'
@@ -12,7 +12,6 @@ import { ProgressHeader } from '../components/app/ProgressHeader'
 import { TaskCard } from '../components/app/TaskCard'
 import { SectionHeading } from '../components/app/SectionHeading'
 import { Badge, Button, Card, ProgressBar } from '../components/primitives/Primitives'
-import { getCompletionForDate, isTaskDueToday, toDateKey } from '../domain/recurrence'
 import {
   createTask,
   createFromBulkImportPlan,
@@ -22,27 +21,43 @@ import {
   toggleSubtask,
   undoBulkImport,
 } from '../data/repository'
+import { formatShortDateLabel } from '../domain/dateFormatting'
 import {
-  getGroupedTodayTaskViews,
-  getTaskIdsForTodayReorder,
-  getTodayTaskViews,
   getProfileSnapshot,
+  getTaskIdsForTodayReorder,
+  getTodayPageViewData,
+  type TodayPageViewData,
+  type TodayTaskGroup,
+  type TodayTaskGroupKey,
   type TodayTaskView,
 } from '../domain/selectors'
 import { getTaskReward } from '../domain/rewards'
-import { getQuestProgress, getQuestTasks } from '../domain/quests'
 import { getCompletedSubtaskCount } from '../domain/subtasks'
-import { useAppCollectionsContext } from '../hooks/AppCollectionsContext'
+import {
+  useAppCollectionsReady,
+  useCategoriesCollectionContext,
+  useCompletionsCollectionContext,
+  useQuestsCollectionContext,
+  useTasksCollectionContext,
+  useWalletTransactionsCollectionContext,
+} from '../hooks/AppCollectionsContext'
 import { useTheme } from '../theme/themeContext'
 import { useUiStore } from '../state/uiStore'
 import { preloadQuestPage } from '../app/routeLoaders'
-import type { Category, CompletionRecord, Task } from '../domain/types'
-import type { TodayTaskGroupKey } from '../domain/selectors'
+import type { BulkImportPlan } from '../domain/bulkAdd'
+import type { CompletionRecord, Task } from '../domain/types'
 import styles from './Page.module.css'
 import sharedStyles from '../components/app/Shared.module.css'
 
 type SecondaryView = 'tomorrow' | 'future' | 'overdue'
 type PrimaryView = 'today' | SecondaryView
+
+interface ScheduleViewData {
+  groups: TodayTaskGroup[]
+  items: TodayTaskView[]
+  isReadOnly: boolean
+  isGrouped: boolean
+}
 
 const PRIMARY_VIEW_OPTIONS: { label: string; value: PrimaryView }[] = [
   { label: 'Today', value: 'today' },
@@ -51,8 +66,15 @@ const PRIMARY_VIEW_OPTIONS: { label: string; value: PrimaryView }[] = [
   { label: 'Overdue', value: 'overdue' },
 ]
 
+const noopTaskAction = async () => {}
+
 export function TodayPage() {
-  const { isReady, categories, tasks, quests, completions, walletTransactions } = useAppCollectionsContext()
+  const isReady = useAppCollectionsReady()
+  const categories = useCategoriesCollectionContext()
+  const tasks = useTasksCollectionContext()
+  const quests = useQuestsCollectionContext()
+  const completions = useCompletionsCollectionContext()
+  const walletTransactions = useWalletTransactionsCollectionContext()
   const navigate = useNavigate()
   const { theme } = useTheme()
   const pushToast = useUiStore((state) => state.pushToast)
@@ -61,30 +83,25 @@ export function TodayPage() {
   const [collapsedGroups, setCollapsedGroups] = useState<Partial<Record<TodayTaskGroupKey, boolean>>>({})
   const profile = getProfileSnapshot(completions, walletTransactions, tasks, categories, quests)
   const today = new Date()
-  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
-  const todaySections = getTodayTaskViews(tasks, categories, completions, today)
-  const groupedTodaySections = getGroupedTodayTaskViews(tasks, categories, completions, today)
-  const tomorrowSections = getTodayTaskViews(tasks, categories, completions, tomorrow)
-  const primaryItems =
-    displayView === 'today'
-      ? todaySections.due
-      : displayView === 'tomorrow'
-        ? tomorrowSections.due
-        : getSecondaryViews(tasks, categories, completions, today, displayView)
-  const isReadOnly = displayView === 'tomorrow'
-  const questSummaries = quests
-    .filter((quest) => !quest.archived && !quest.completedAt)
-    .map((quest) => ({
-      quest,
-      tasks: getQuestTasks(quest.id, tasks),
-      progress: getQuestProgress(quest, tasks, completions),
-    }))
+  const pageView = getTodayPageViewData(tasks, categories, quests, completions, today)
+  const scheduleView = getScheduleViewData(displayView, pageView)
+  const todayDueTaskIds = pageView.today.due.map((entry) => entry.task.id)
+  const activeCategories = categories.filter((category) => !category.archived)
 
   if (!isReady) {
     return <Card>Loading…</Card>
   }
 
-  async function handleBulkCreate(plan: Parameters<typeof createFromBulkImportPlan>[0]) {
+  function showTaskRewardToast(task: Task) {
+    const reward = getTaskReward(task)
+
+    pushToast({
+      title: task.title,
+      description: `${reward.xp} XP and ${reward.coins} coins secured.`,
+    })
+  }
+
+  async function handleBulkCreate(plan: BulkImportPlan) {
     const commit = await createFromBulkImportPlan(plan)
 
     pushToast({
@@ -105,6 +122,52 @@ export function TodayPage() {
     return commit
   }
 
+  async function handleTaskComplete(task: Task, isReadOnly: boolean) {
+    if (isReadOnly) {
+      return
+    }
+
+    await completeTask(task)
+    showTaskRewardToast(task)
+  }
+
+  async function handleSubtaskToggle(
+    task: Task,
+    completion: CompletionRecord | undefined,
+    subtaskId: string,
+    isReadOnly: boolean,
+  ) {
+    if (isReadOnly) {
+      return
+    }
+
+    const hadCount = getCompletedSubtaskCount(task, completion)
+    await toggleSubtask(task, subtaskId)
+
+    if (hadCount === task.subtasks.length - 1) {
+      showTaskRewardToast(task)
+    }
+  }
+
+  function handleTaskDrop(targetTaskId: string) {
+    if (!draggedTaskId || draggedTaskId === targetTaskId) {
+      return
+    }
+
+    const reorderedTaskIds = getTaskIdsForTodayReorder(tasks, todayDueTaskIds, draggedTaskId, targetTaskId)
+
+    setDraggedTaskId(null)
+    void reorderTasks(reorderedTaskIds)
+  }
+  const scheduleActions = {
+    draggedTaskId,
+    onDragStart: setDraggedTaskId,
+    onDragEnd: () => setDraggedTaskId(null),
+    onDropTask: handleTaskDrop,
+    onCompleteTask: handleTaskComplete,
+    onToggleTaskSubtask: handleSubtaskToggle,
+  }
+
   return (
     <div data-slot="page" className={styles.page}>
       <div data-slot="page-feature-grid" className={styles.featureGrid}>
@@ -120,10 +183,9 @@ export function TodayPage() {
                     size="sm"
                     variant={displayView === option.value ? 'primary' : 'secondary'}
                     onClick={() => {
-                      if (displayView === option.value) {
-                        return
+                      if (displayView !== option.value) {
+                        setDisplayView(option.value)
                       }
-                      setDisplayView(option.value)
                     }}
                   >
                     {option.label}
@@ -132,149 +194,54 @@ export function TodayPage() {
               />
 
               <AnimatePresence initial={false}>
-                  {primaryItems.length ? (
-                    displayView === 'today' ? (
-                      groupedTodaySections.map((group) => (
-                        <section key={group.key} className={styles.taskGroup}>
-                          <button
-                            type="button"
-                            className={styles.taskGroupToggle}
-                            onClick={() =>
-                              setCollapsedGroups((current) => ({
-                                ...current,
-                                [group.key]: !current[group.key],
-                              }))
-                            }
-                            aria-expanded={!collapsedGroups[group.key]}
-                          >
-                            <div className={styles.taskGroupHeader}>
-                              <div className={styles.taskGroupHeading}>
-                                <span className={styles.taskGroupChevron}>
-                                  {collapsedGroups[group.key] ? (
-                                    <CaretRightIcon aria-hidden="true" size={16} weight="bold" />
-                                  ) : (
-                                    <CaretDownIcon aria-hidden="true" size={16} weight="bold" />
-                                  )}
-                                </span>
-                                <h3 className={styles.taskGroupTitle}>{group.title}</h3>
-                              </div>
-                              <Badge tone="mist">{group.items.length}</Badge>
+                {scheduleView.items.length ? (
+                  scheduleView.isGrouped ? (
+                    scheduleView.groups.map((group) => (
+                      <section key={group.key} className={styles.taskGroup}>
+                        <button
+                          type="button"
+                          className={styles.taskGroupToggle}
+                          onClick={() =>
+                            setCollapsedGroups((current) => ({
+                              ...current,
+                              [group.key]: !current[group.key],
+                            }))
+                          }
+                          aria-expanded={!collapsedGroups[group.key]}
+                        >
+                          <div className={styles.taskGroupHeader}>
+                            <div className={styles.taskGroupHeading}>
+                              <span className={styles.taskGroupChevron}>
+                                {collapsedGroups[group.key] ? (
+                                  <CaretRightIcon aria-hidden="true" size={16} weight="bold" />
+                                ) : (
+                                  <CaretDownIcon aria-hidden="true" size={16} weight="bold" />
+                                )}
+                              </span>
+                              <h3 className={styles.taskGroupTitle}>{group.title}</h3>
                             </div>
-                          </button>
-                          {!collapsedGroups[group.key] ? (
-                            <div className={styles.taskGroupList}>
-                              {group.items.map((item) => (
-                                <TaskCard
-                                  key={item.task.id}
-                                  task={item.task}
-                                  categories={item.categories}
-                                  completion={item.completion}
-                                  isCompleted={false}
-                                  readOnly={isReadOnly}
-                                  draggable
-                                  dragActive={draggedTaskId === item.task.id}
-                                  onDragStart={() => {
-                                    setDraggedTaskId(item.task.id)
-                                  }}
-                                  onDragEnd={() => setDraggedTaskId(null)}
-                                  onDrop={() => {
-                                    if (!draggedTaskId || draggedTaskId === item.task.id) {
-                                      return
-                                    }
-
-                                    const reorderedTaskIds = getTaskIdsForTodayReorder(
-                                      tasks,
-                                      todaySections.due.map((entry) => entry.task.id),
-                                      draggedTaskId,
-                                      item.task.id,
-                                    )
-
-                                    setDraggedTaskId(null)
-                                    void reorderTasks(reorderedTaskIds)
-                                  }}
-                                  onComplete={async () => {
-                                    const reward = getTaskReward(item.task)
-                                    await completeTask(item.task)
-                                    pushToast({
-                                      title: item.task.title,
-                                      description: `${reward.xp} XP and ${reward.coins} coins secured.`,
-                                    })
-                                  }}
-                                  onToggleSubtask={async (subtaskId) => {
-                                    const hadCount = getCompletedSubtaskCount(item.task, item.completion)
-                                    await toggleSubtask(item.task, subtaskId)
-                                    if (hadCount === item.task.subtasks.length - 1) {
-                                      const reward = getTaskReward(item.task)
-                                      pushToast({
-                                        title: item.task.title,
-                                        description: `${reward.xp} XP and ${reward.coins} coins secured.`,
-                                      })
-                                    }
-                                  }}
-                                />
-                              ))}
-                            </div>
-                          ) : null}
-                        </section>
-                      ))
-                    ) : (
-                      primaryItems.map((item) => (
-                        <TaskCard
-                          key={item.task.id}
-                          task={item.task}
-                          categories={item.categories}
-                          completion={item.completion}
-                          isCompleted={false}
-                          readOnly={isReadOnly}
-                          draggable={false}
-                          dragActive={draggedTaskId === item.task.id}
-                          onDragStart={() => {
-                            setDraggedTaskId(item.task.id)
-                          }}
-                          onDragEnd={() => setDraggedTaskId(null)}
-                          onDrop={() => {
-                            if (!draggedTaskId || draggedTaskId === item.task.id) {
-                              return
-                            }
-
-                            const reorderedTaskIds = getTaskIdsForTodayReorder(
-                              tasks,
-                              todaySections.due.map((entry) => entry.task.id),
-                              draggedTaskId,
-                              item.task.id,
-                            )
-
-                            setDraggedTaskId(null)
-                            void reorderTasks(reorderedTaskIds)
-                          }}
-                          onComplete={async () => {
-                            if (isReadOnly) {
-                              return
-                            }
-                            const reward = getTaskReward(item.task)
-                            await completeTask(item.task)
-                            pushToast({
-                              title: item.task.title,
-                              description: `${reward.xp} XP and ${reward.coins} coins secured.`,
-                            })
-                          }}
-                          onToggleSubtask={async (subtaskId) => {
-                            if (isReadOnly) {
-                              return
-                            }
-                            const hadCount = getCompletedSubtaskCount(item.task, item.completion)
-                            await toggleSubtask(item.task, subtaskId)
-                            if (hadCount === item.task.subtasks.length - 1) {
-                              const reward = getTaskReward(item.task)
-                              pushToast({
-                                title: item.task.title,
-                                description: `${reward.xp} XP and ${reward.coins} coins secured.`,
-                              })
-                            }
-                          }}
-                        />
-                      ))
-                    )
+                            <Badge tone="mist">{group.items.length}</Badge>
+                          </div>
+                        </button>
+                        {!collapsedGroups[group.key] ? (
+                          <div className={styles.taskGroupList}>
+                            {group.items.map((item) => (
+                              <ScheduleTaskCard key={item.task.id} item={item} draggable actions={scheduleActions} />
+                            ))}
+                          </div>
+                        ) : null}
+                      </section>
+                    ))
+                  ) : (
+                    scheduleView.items.map((item) => (
+                      <ScheduleTaskCard
+                        key={item.task.id}
+                        item={item}
+                        readOnly={scheduleView.isReadOnly}
+                        actions={scheduleActions}
+                      />
+                    ))
+                  )
                 ) : (
                   <div data-slot="empty-state" className={sharedStyles.empty}>
                     <img
@@ -295,19 +262,18 @@ export function TodayPage() {
           </Card>
 
           <QuickAddComposer
-            categories={categories.filter((category) => !category.archived)}
+            categories={activeCategories}
             quests={quests}
             onCreate={createTask}
             onBulkCreate={handleBulkCreate}
           />
-
         </div>
 
         <div data-slot="page-stack" className={styles.stack}>
           <ProgressHeader
             profile={profile}
-            completedCount={todaySections.completed.length}
-            dueCount={todaySections.due.length}
+            completedCount={pageView.today.completed.length}
+            dueCount={pageView.today.due.length}
           />
           <Card>
             <div data-slot="section-panel" className={sharedStyles.panel}>
@@ -320,34 +286,16 @@ export function TodayPage() {
                 </h2>
               </div>
 
-              {todaySections.completed.length ? (
+              {pageView.today.completed.length ? (
                 <div data-slot="scroll-panel" className={styles.scrollPanel}>
                   <div data-slot="history-list" className={styles.history}>
-                  {todaySections.completed.map((item) => (
-                    <TaskCard
-                      key={`${item.task.id}-done`}
-                      task={item.task}
-                      categories={item.categories}
-                      completion={item.completion}
-                      isCompleted
-                      onComplete={async () => {}}
-                      onToggleSubtask={async () => {}}
-                      actionSlot={
-                        item.completion ? (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => void deleteCompletionRecord(item.completion!.id)}
-                          >
-                            <span className={sharedStyles.inlineLabel}>
-                              <ArrowCounterClockwiseIcon aria-hidden="true" size={15} weight="bold" />
-                              <span>Cancel</span>
-                            </span>
-                          </Button>
-                        ) : undefined
-                      }
-                    />
-                  ))}
+                    {pageView.today.completed.map((item) => (
+                      <CompletedTaskCard
+                        key={`${item.task.id}-done`}
+                        item={item}
+                        actionSlot={getCompletedTaskAction(item.completion)}
+                      />
+                    ))}
                   </div>
                 </div>
               ) : (
@@ -370,9 +318,9 @@ export function TodayPage() {
                   </Button>
                 </div>
               </div>
-              {questSummaries.length ? (
+              {pageView.questSummaries.length ? (
                 <div className={styles.questList}>
-                  {questSummaries.map(({ quest, progress }) => (
+                  {pageView.questSummaries.map(({ quest, progress }) => (
                     <button
                       key={quest.id}
                       type="button"
@@ -411,7 +359,7 @@ export function TodayPage() {
                             {quest.rewardXp} XP · {quest.rewardCoins} coins
                           </span>
                           {progress.nextDueDate ? (
-                            <span>Next due {formatDateLabel(progress.nextDueDate)}</span>
+                            <span>Next due {formatShortDateLabel(progress.nextDueDate)}</span>
                           ) : null}
                         </div>
                         <ProgressBar value={progress.percentComplete} max={100} />
@@ -440,6 +388,46 @@ export function TodayPage() {
   )
 }
 
+function getScheduleViewData(view: PrimaryView, pageView: TodayPageViewData): ScheduleViewData {
+  switch (view) {
+    case 'today':
+      return {
+        groups: pageView.today.groups,
+        items: pageView.today.due,
+        isGrouped: true,
+        isReadOnly: false,
+      }
+    case 'tomorrow':
+      return {
+        groups: [],
+        items: pageView.tomorrow.due,
+        isGrouped: false,
+        isReadOnly: true,
+      }
+    case 'future':
+      return {
+        groups: [],
+        items: pageView.future,
+        isGrouped: false,
+        isReadOnly: false,
+      }
+    case 'overdue':
+      return {
+        groups: [],
+        items: pageView.overdue,
+        isGrouped: false,
+        isReadOnly: false,
+      }
+    default:
+      return {
+        groups: [],
+        items: pageView.today.due,
+        isGrouped: false,
+        isReadOnly: false,
+      }
+  }
+}
+
 function getEmptyStateMessage(view: PrimaryView): string {
   switch (view) {
     case 'today':
@@ -455,69 +443,86 @@ function getEmptyStateMessage(view: PrimaryView): string {
   }
 }
 
-function getSecondaryViews(
-  tasks: Task[],
-  categories: Category[],
-  completions: CompletionRecord[],
-  today: Date,
-  view: SecondaryView,
-): TodayTaskView[] {
-  const categoriesById = new Map(categories.map((category) => [category.id, category]))
-  const todayKey = toDateKey(today)
-  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
-  const tomorrowKey = toDateKey(tomorrow)
-
-  if (view === 'tomorrow') {
-    return getTodayTaskViews(tasks, categories, completions, tomorrow).due
+function ScheduleTaskCard({
+  item,
+  draggable,
+  readOnly,
+  actions,
+}: {
+  item: TodayTaskView
+  draggable?: boolean
+  readOnly?: boolean
+  actions: {
+    draggedTaskId: string | null
+    onDragStart: (taskId: string | null) => void
+    onDragEnd: () => void
+    onDropTask: (targetTaskId: string) => void
+    onCompleteTask: (task: Task, isReadOnly: boolean) => Promise<void>
+    onToggleTaskSubtask: (
+      task: Task,
+      completion: CompletionRecord | undefined,
+      subtaskId: string,
+      isReadOnly: boolean,
+    ) => Promise<void>
   }
+}) {
+  const isReadOnly = Boolean(readOnly)
 
-  return tasks
-    .filter((task) => {
-      if (!task.active || task.archivedAt) {
-        return false
+  return (
+    <TaskCard
+      task={item.task}
+      categories={item.categories}
+      completion={item.completion}
+      isCompleted={false}
+      readOnly={isReadOnly}
+      draggable={draggable}
+      dragActive={actions.draggedTaskId === item.task.id}
+      onDragStart={draggable ? () => actions.onDragStart(item.task.id) : undefined}
+      onDragEnd={draggable ? actions.onDragEnd : undefined}
+      onDrop={draggable ? () => actions.onDropTask(item.task.id) : undefined}
+      onComplete={() => actions.onCompleteTask(item.task, isReadOnly)}
+      onToggleSubtask={(subtaskId) =>
+        actions.onToggleTaskSubtask(item.task, item.completion, subtaskId, isReadOnly)
       }
-
-      if (task.cadence === 'none') {
-        const isComplete = completions.some(
-          (completion) => completion.taskId === task.id && Boolean(completion.completedAt),
-        )
-
-        if (isComplete || !task.dueDate) {
-          return false
-        }
-
-        return view === 'overdue' ? task.dueDate < todayKey : task.dueDate > tomorrowKey
-      }
-
-      if (view === 'overdue' || task.cadence === 'daily') {
-        return false
-      }
-
-      if (!task.dueDate || task.dueDate <= todayKey) {
-        return false
-      }
-
-      return !isTaskDueToday(task, completions, today)
-    })
-    .map((task) => ({
-      task,
-      categories: task.categoryIds
-        .map((categoryId) => categoriesById.get(categoryId))
-        .filter((category): category is Category => Boolean(category)),
-      completion: getCompletionForDate(task, completions, today),
-      isCompletedToday: false,
-    }))
-    .sort((left, right) => {
-      const leftDue = left.task.dueDate ?? '9999-12-31'
-      const rightDue = right.task.dueDate ?? '9999-12-31'
-      return leftDue.localeCompare(rightDue) || left.task.sortOrder - right.task.sortOrder
-    })
+    />
+  )
 }
 
-function formatDateLabel(dateKey: string): string {
-  const [year, month, day] = dateKey.split('-').map(Number)
-  return new Intl.DateTimeFormat('en-GB', {
-    day: 'numeric',
-    month: 'short',
-  }).format(new Date(year, month - 1, day))
+function CompletedTaskCard({
+  item,
+  actionSlot,
+}: {
+  item: TodayTaskView
+  actionSlot?: ReactNode
+}) {
+  return (
+    <TaskCard
+      task={item.task}
+      categories={item.categories}
+      completion={item.completion}
+      isCompleted
+      onComplete={noopTaskAction}
+      onToggleSubtask={noopTaskAction}
+      actionSlot={actionSlot}
+    />
+  )
+}
+
+function getCompletedTaskAction(completion: CompletionRecord | undefined) {
+  if (!completion) {
+    return undefined
+  }
+
+  return (
+    <Button
+      size="sm"
+      variant="secondary"
+      onClick={() => void deleteCompletionRecord(completion.id)}
+    >
+      <span className={sharedStyles.inlineLabel}>
+        <ArrowCounterClockwiseIcon aria-hidden="true" size={15} weight="bold" />
+        <span>Cancel</span>
+      </span>
+    </Button>
+  )
 }

@@ -10,7 +10,14 @@ import { Button, Card, Field, TextField, Textarea, Checkbox } from '../component
 import { createReward, deleteWalletTransaction, purchaseReward } from '../data/repository'
 import { getProfileSnapshot } from '../domain/selectors'
 import type { RewardItem } from '../domain/types'
-import { useAppCollectionsContext } from '../hooks/AppCollectionsContext'
+import {
+  useCategoriesCollectionContext,
+  useCompletionsCollectionContext,
+  useQuestsCollectionContext,
+  useRewardsCollectionContext,
+  useTasksCollectionContext,
+  useWalletTransactionsCollectionContext,
+} from '../hooks/AppCollectionsContext'
 import { useEffect, useRef, useState } from 'react'
 import { useUiStore } from '../state/uiStore'
 import styles from './Page.module.css'
@@ -19,7 +26,12 @@ import sharedStyles from '../components/app/Shared.module.css'
 const PURCHASE_SETTLE_MS = 900
 
 export function RewardsPage() {
-  const { rewards, walletTransactions, completions, tasks, categories, quests } = useAppCollectionsContext()
+  const rewards = useRewardsCollectionContext()
+  const walletTransactions = useWalletTransactionsCollectionContext()
+  const completions = useCompletionsCollectionContext()
+  const tasks = useTasksCollectionContext()
+  const categories = useCategoriesCollectionContext()
+  const quests = useQuestsCollectionContext()
   const profile = getProfileSnapshot(completions, walletTransactions, tasks, categories, quests)
   const pushToast = useUiStore((state) => state.pushToast)
   const [form, setForm] = useState({
@@ -38,10 +50,15 @@ export function RewardsPage() {
   }, [])
 
   const activeRewards = rewards.filter((reward) => !reward.archived)
-  const visibleRewards = rewards.filter(
-    (reward) => !reward.archived || recentlyPurchasedRewardIds.includes(reward.id),
-  )
+  const buyingRewardIdSet = new Set(buyingRewardIds)
+  const recentlyPurchasedRewardIdSet = new Set(recentlyPurchasedRewardIds)
+  const rewardTitlesById = new Map(rewards.map((reward) => [reward.id, reward.title]))
+  const visibleRewards = rewards.filter((reward) => !reward.archived || recentlyPurchasedRewardIdSet.has(reward.id))
   const purchaseHistory = walletTransactions.filter((entry) => entry.type === 'reward_purchase')
+  const purchaseHistoryViews = purchaseHistory.map((entry) => ({
+    ...entry,
+    rewardTitle: rewardTitlesById.get(entry.sourceId) ?? 'Archived reward',
+  }))
 
   const markPurchaseSettled = (reward: RewardItem) => {
     window.clearTimeout(purchaseTimerRefs.current[reward.id])
@@ -102,13 +119,7 @@ export function RewardsPage() {
                   key={reward.id}
                   reward={reward}
                   canBuy={profile.coins >= reward.coinCost}
-                  purchaseState={
-                    buyingRewardIds.includes(reward.id)
-                      ? 'buying'
-                      : recentlyPurchasedRewardIds.includes(reward.id)
-                        ? 'purchased'
-                        : 'idle'
-                  }
+                  purchaseState={getPurchaseState(reward.id, buyingRewardIdSet, recentlyPurchasedRewardIdSet)}
                   onBuy={async () => {
                     setBuyingRewardIds((current) => [...new Set([...current, reward.id])])
 
@@ -122,9 +133,7 @@ export function RewardsPage() {
                       markPurchaseSettled(reward)
                       pushToast({
                         title: reward.title,
-                        description: reward.repeatable
-                          ? `${reward.coinCost} coins spent. This one stays on the shelf for next time.`
-                          : `${reward.coinCost} coins spent. Added to your purchase history.`,
+                        description: getRewardPurchaseDescription(reward),
                       })
                       return true
                     } finally {
@@ -206,32 +215,29 @@ export function RewardsPage() {
             <div data-slot="section-panel" className={sharedStyles.panel}>
               <h2 data-slot="section-heading" className={sharedStyles.heading}>Purchase history</h2>
               <div data-slot="history-list" className={styles.history}>
-                {purchaseHistory.length ? (
-                  purchaseHistory.map((entry) => {
-                    const reward = rewards.find((item) => item.id === entry.sourceId)
-                    return (
-                      <div data-slot="history-row" key={entry.id} className={styles.historyRow}>
-                        <div>
-                          <div>{reward?.title ?? 'Archived reward'}</div>
-                          <div className={styles.historyMeta}>
-                            <span>{Math.abs(entry.amount)} coins</span>
-                            <span>{new Date(entry.createdAt).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                        <div data-slot="action-group" className={styles.historyActions}>
-                          <Button
-                            variant="secondary"
-                            onClick={() => void deleteWalletTransaction(entry.id)}
-                          >
-                            <span className={sharedStyles.inlineLabel}>
-                              <TrashIcon aria-hidden="true" size={15} weight="bold" />
-                              <span>Remove</span>
-                            </span>
-                          </Button>
+                {purchaseHistoryViews.length ? (
+                  purchaseHistoryViews.map((entry) => (
+                    <div data-slot="history-row" key={entry.id} className={styles.historyRow}>
+                      <div>
+                        <div>{entry.rewardTitle}</div>
+                        <div className={styles.historyMeta}>
+                          <span>{Math.abs(entry.amount)} coins</span>
+                          <span>{new Date(entry.createdAt).toLocaleDateString()}</span>
                         </div>
                       </div>
-                    )
-                  })
+                      <div data-slot="action-group" className={styles.historyActions}>
+                        <Button
+                          variant="secondary"
+                          onClick={() => void deleteWalletTransaction(entry.id)}
+                        >
+                          <span className={sharedStyles.inlineLabel}>
+                            <TrashIcon aria-hidden="true" size={15} weight="bold" />
+                            <span>Remove</span>
+                          </span>
+                        </Button>
+                      </div>
+                    </div>
+                  ))
                 ) : (
                   <p data-slot="muted-text" className={sharedStyles.muted}>Nothing spent yet.</p>
                 )}
@@ -242,4 +248,28 @@ export function RewardsPage() {
       </div>
     </div>
   )
+}
+
+function getPurchaseState(
+  rewardId: string,
+  buyingRewardIds: Set<string>,
+  recentlyPurchasedRewardIds: Set<string>,
+) {
+  if (buyingRewardIds.has(rewardId)) {
+    return 'buying' as const
+  }
+
+  if (recentlyPurchasedRewardIds.has(rewardId)) {
+    return 'purchased' as const
+  }
+
+  return 'idle' as const
+}
+
+function getRewardPurchaseDescription(reward: RewardItem) {
+  if (reward.repeatable) {
+    return `${reward.coinCost} coins spent. This one stays on the shelf for next time.`
+  }
+
+  return `${reward.coinCost} coins spent. Added to your purchase history.`
 }

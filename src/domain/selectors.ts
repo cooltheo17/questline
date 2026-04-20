@@ -1,6 +1,7 @@
 import { getLevelFromXp } from './level'
 import { isRitualTask } from './categories'
 import { getCompletionForDate, isSameLocalDay, isTaskDueToday, toDateKey } from './recurrence'
+import { getQuestProgress } from './quests'
 import { getWalletBalance } from './rewards'
 import type { Category, CompletionRecord, Quest, Task, WalletTransaction } from './types'
 
@@ -17,6 +18,26 @@ export interface TodayTaskGroup {
   key: TodayTaskGroupKey
   title: string
   items: TodayTaskView[]
+}
+
+export interface QuestSummaryView {
+  quest: Quest
+  progress: ReturnType<typeof getQuestProgress>
+}
+
+export interface TodayPageViewData {
+  today: {
+    due: TodayTaskView[]
+    completed: TodayTaskView[]
+    groups: TodayTaskGroup[]
+  }
+  tomorrow: {
+    due: TodayTaskView[]
+    completed: TodayTaskView[]
+  }
+  future: TodayTaskView[]
+  overdue: TodayTaskView[]
+  questSummaries: QuestSummaryView[]
 }
 
 export interface ProfileSnapshot {
@@ -75,26 +96,39 @@ function getCompletionStreak(
   return streak
 }
 
+function getCategoriesById(categories: Category[]) {
+  return new Map(categories.map((category) => [category.id, category]))
+}
+
+function createTodayTaskView(
+  task: Task,
+  categoriesById: Map<string, Category>,
+  completion: CompletionRecord | undefined,
+  date: Date,
+): TodayTaskView {
+  return {
+    task,
+    categories: task.categoryIds
+      .map((categoryId) => categoriesById.get(categoryId))
+      .filter((category): category is Category => Boolean(category)),
+    completion,
+    isCompletedToday: Boolean(completion?.completedAt && isSameLocalDay(completion.completedAt, date)),
+  }
+}
+
 export function getTodayTaskViews(
   tasks: Task[],
   categories: Category[],
   completions: CompletionRecord[],
   date: Date,
 ): { due: TodayTaskView[]; completed: TodayTaskView[] } {
-  const categoriesById = new Map(categories.map((category) => [category.id, category]))
+  const categoriesById = getCategoriesById(categories)
   const due: TodayTaskView[] = []
   const completed: TodayTaskView[] = []
 
   for (const task of tasks) {
     const completion = getCompletionForDate(task, completions, date)
-    const view: TodayTaskView = {
-      task,
-      categories: task.categoryIds
-        .map((categoryId) => categoriesById.get(categoryId))
-        .filter((category): category is Category => Boolean(category)),
-      completion,
-      isCompletedToday: Boolean(completion?.completedAt && isSameLocalDay(completion.completedAt, date)),
-    }
+    const view = createTodayTaskView(task, categoriesById, completion, date)
 
     if (view.isCompletedToday) {
       completed.push(view)
@@ -118,14 +152,12 @@ export function getTodayTaskViews(
   return { due, completed }
 }
 
-export function getGroupedTodayTaskViews(
-  tasks: Task[],
+export function groupTodayTaskViews(
+  dueItems: TodayTaskView[],
   categories: Category[],
-  completions: CompletionRecord[],
   date: Date,
 ): TodayTaskGroup[] {
-  const todaySections = getTodayTaskViews(tasks, categories, completions, date)
-  const categoriesById = new Map(categories.map((category) => [category.id, category]))
+  const categoriesById = getCategoriesById(categories)
   const todayKey = toDateKey(date)
   const groups: TodayTaskGroup[] = [
     {
@@ -155,7 +187,7 @@ export function getGroupedTodayTaskViews(
     },
   ]
 
-  for (const item of todaySections.due) {
+  for (const item of dueItems) {
     const isOneOff = item.task.cadence === 'none'
     const isOverdueOneOff = isOneOff && Boolean(item.task.dueDate && item.task.dueDate < todayKey)
     const isQuestTask = Boolean(item.task.questId)
@@ -185,6 +217,101 @@ export function getGroupedTodayTaskViews(
   }
 
   return groups.filter((group) => group.items.length > 0)
+}
+
+export function getGroupedTodayTaskViews(
+  tasks: Task[],
+  categories: Category[],
+  completions: CompletionRecord[],
+  date: Date,
+): TodayTaskGroup[] {
+  const todaySections = getTodayTaskViews(tasks, categories, completions, date)
+  return groupTodayTaskViews(todaySections.due, categories, date)
+}
+
+function getSecondaryTaskViews(
+  tasks: Task[],
+  categories: Category[],
+  completions: CompletionRecord[],
+  today: Date,
+  view: 'future' | 'overdue',
+): TodayTaskView[] {
+  const categoriesById = getCategoriesById(categories)
+  const completedTaskIds = new Set(
+    completions
+      .filter((completion) => Boolean(completion.completedAt))
+      .map((completion) => completion.taskId),
+  )
+  const todayKey = toDateKey(today)
+  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+  const tomorrowKey = toDateKey(tomorrow)
+
+  return tasks
+    .filter((task) => {
+      if (!task.active || task.archivedAt) {
+        return false
+      }
+
+      if (task.cadence === 'none') {
+        if (completedTaskIds.has(task.id) || !task.dueDate) {
+          return false
+        }
+
+        return view === 'overdue' ? task.dueDate < todayKey : task.dueDate > tomorrowKey
+      }
+
+      if (view === 'overdue' || task.cadence === 'daily') {
+        return false
+      }
+
+      if (!task.dueDate || task.dueDate <= todayKey) {
+        return false
+      }
+
+      return !isTaskDueToday(task, completions, today)
+    })
+    .map((task) => createTodayTaskView(task, categoriesById, getCompletionForDate(task, completions, today), today))
+    .sort((left, right) => {
+      const leftDue = left.task.dueDate ?? '9999-12-31'
+      const rightDue = right.task.dueDate ?? '9999-12-31'
+      return leftDue.localeCompare(rightDue) || left.task.sortOrder - right.task.sortOrder
+    })
+}
+
+function getQuestSummaryViews(
+  quests: Quest[],
+  tasks: Task[],
+  completions: CompletionRecord[],
+): QuestSummaryView[] {
+  return quests
+    .filter((quest) => !quest.archived && !quest.completedAt)
+    .map((quest) => ({
+      quest,
+      progress: getQuestProgress(quest, tasks, completions),
+    }))
+}
+
+export function getTodayPageViewData(
+  tasks: Task[],
+  categories: Category[],
+  quests: Quest[],
+  completions: CompletionRecord[],
+  date: Date,
+): TodayPageViewData {
+  const today = getTodayTaskViews(tasks, categories, completions, date)
+  const tomorrowDate = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1)
+  const tomorrow = getTodayTaskViews(tasks, categories, completions, tomorrowDate)
+
+  return {
+    today: {
+      ...today,
+      groups: groupTodayTaskViews(today.due, categories, date),
+    },
+    tomorrow,
+    future: getSecondaryTaskViews(tasks, categories, completions, date, 'future'),
+    overdue: getSecondaryTaskViews(tasks, categories, completions, date, 'overdue'),
+    questSummaries: getQuestSummaryViews(quests, tasks, completions),
+  }
 }
 
 export function getTaskIdsForTodayReorder(

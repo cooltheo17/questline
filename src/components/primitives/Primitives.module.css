@@ -198,11 +198,14 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  min-width: 0;
+  cursor: pointer;
 }
 
 .checkbox {
   inline-size: 1.2rem;
   block-size: 1.2rem;
+  flex: 0 0 auto;
   border-radius: 0.24rem;
   border: 1px solid var(--theme-semantic-border-subtle);
   background: var(--theme-semantic-surface-raised);
@@ -210,10 +213,35 @@
   align-items: center;
   justify-content: center;
   color: var(--theme-semantic-success);
+  font-size: 0.82rem;
+  line-height: 1;
+  transition:
+    border-color var(--theme-motion-fast),
+    background-color var(--theme-motion-fast),
+    box-shadow var(--theme-motion-fast),
+    color var(--theme-motion-fast);
+}
+
+.checkbox[data-state='checked'] {
+  border-color: color-mix(in srgb, var(--theme-semantic-success) 68%, var(--theme-semantic-border-subtle));
+  background: color-mix(in srgb, var(--theme-semantic-success) 88%, var(--theme-semantic-surface-raised));
+  color: var(--theme-semantic-surface);
+}
+
+.checkbox:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-semantic-accent) 18%, transparent);
+}
+
+.checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
 }
 
 .checkboxLabel {
   color: var(--theme-semantic-text-primary);
+  min-width: 0;
+  line-height: 1.35;
 }
 
 .selectContent {

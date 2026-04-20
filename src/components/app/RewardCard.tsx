@@ -19,6 +19,8 @@ export function RewardCard({
 }) {
   const isBusy = purchaseState === 'buying'
   const isPurchased = purchaseState === 'purchased'
+  const purchaseLabel = getPurchaseLabel(purchaseState, canBuy)
+  const purchaseStatus = getPurchaseStatus(reward.repeatable)
 
   return (
     <motion.article
@@ -60,15 +62,7 @@ export function RewardCard({
               ) : (
                 <GiftIcon aria-hidden="true" size={16} weight="duotone" />
               )}
-              <span>
-                {isPurchased
-                  ? 'Purchased'
-                  : isBusy
-                    ? 'Buying...'
-                    : canBuy
-                      ? 'Buy reward'
-                      : 'Need more coins'}
-              </span>
+              <span>{purchaseLabel}</span>
             </span>
           </Button>
           {reward.link ? (
@@ -83,11 +77,29 @@ export function RewardCard({
         </div>
         {isPurchased ? (
           <p data-slot="muted-text" className={styles.rewardStatus}>
-            {reward.repeatable ? 'Purchase logged. This reward is still available.' : 'Purchase logged. Leaving the shop.'}
+            {purchaseStatus}
           </p>
         ) : null}
       </div>
       </Card>
     </motion.article>
   )
+}
+
+function getPurchaseLabel(purchaseState: 'idle' | 'buying' | 'purchased', canBuy: boolean) {
+  if (purchaseState === 'purchased') {
+    return 'Purchased'
+  }
+
+  if (purchaseState === 'buying') {
+    return 'Buying...'
+  }
+
+  return canBuy ? 'Buy reward' : 'Need more coins'
+}
+
+function getPurchaseStatus(isRepeatable: boolean) {
+  return isRepeatable
+    ? 'Purchase logged. This reward is still available.'
+    : 'Purchase logged. Leaving the shop.'
 }

@@ -281,7 +281,7 @@ export function TabPanel({
   children,
 }: PropsWithChildren<{ value: string }>) {
   return (
-    <TabsPrimitive.Content data-slot="tabs-content" value={value} forceMount className={styles.tabsContent}>
+    <TabsPrimitive.Content data-slot="tabs-content" value={value} className={styles.tabsContent}>
       {children}
     </TabsPrimitive.Content>
   )
