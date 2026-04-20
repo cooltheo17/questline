@@ -312,6 +312,28 @@ export const ledgerTheme: AppTheme = {
       inline-size: 1rem;
       block-size: 1rem;
       border-radius: 0.18rem;
+      border-color: color-mix(in srgb, var(--theme-semantic-text-primary) 26%, var(--theme-semantic-border-subtle));
+      background: #111312;
+    }
+
+    html[data-theme='ledger'] [data-slot='checkbox'][data-state='checked'] {
+      border-color: color-mix(in srgb, var(--theme-semantic-accentStrong) 62%, var(--theme-semantic-border-subtle));
+      background: color-mix(in srgb, var(--theme-semantic-accent) 34%, #111312);
+      color: #f3efe4;
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-semantic-accentStrong) 22%, transparent);
+    }
+
+    html[data-theme='ledger'] [data-slot='checkbox-row'] {
+      gap: 0.6rem;
+      padding: 0.38rem 0.5rem;
+      border-radius: 6px;
+      background: color-mix(in srgb, var(--theme-semantic-surface-raised) 42%, transparent);
+    }
+
+    html[data-theme='ledger'] [data-slot='checkbox-label'] {
+      color: #ddd7cb;
+      font-size: 0.89rem;
+      font-weight: 500;
     }
 
     html[data-theme='ledger'] [data-slot='progress-rail'] {
@@ -329,106 +351,6 @@ export const ledgerTheme: AppTheme = {
       border-radius: 5px;
       padding: 0.06rem;
       background: color-mix(in srgb, var(--theme-semantic-surface) 82%, transparent);
-    }
-
-    html[data-theme='ledger'] [data-slot='task-card'] {
-      position: relative;
-      isolation: isolate;
-      gap: 0.45rem;
-      margin-inline: -0.5rem;
-      padding: 0.82rem 0.62rem 0.72rem 0.56rem;
-      border: 0;
-      border-top: 1px solid color-mix(in srgb, var(--theme-semantic-border-subtle) 76%, transparent);
-      border-radius: 6px;
-      background: transparent;
-      box-shadow: none;
-    }
-
-    html[data-theme='ledger'] [data-slot='task-card']:first-child {
-      padding-top: 0.52rem;
-      border-top: 0;
-    }
-
-    html[data-theme='ledger'] [data-slot='task-card']::before {
-      content: '';
-      position: absolute;
-      inset: 0.16rem 0.06rem 0.1rem 0.04rem;
-      border-radius: 6px;
-      background: transparent;
-      z-index: -1;
-      transition: background var(--theme-motion-fast);
-      pointer-events: none;
-    }
-
-    html[data-theme='ledger'] [data-slot='task-card']:first-child::before {
-      inset-block-start: 0.14rem;
-    }
-
-    html[data-theme='ledger'] [data-slot='task-card']:hover {
-      background: transparent;
-      box-shadow: none;
-    }
-
-    html[data-theme='ledger'] [data-slot='task-card']:hover::before {
-      inset-block-start: 0.12rem;
-      inset-inline-end: 0.12rem;
-      background: color-mix(in srgb, var(--theme-semantic-accent) 6%, transparent);
-    }
-
-    html[data-theme='ledger'] [data-slot='task-card'][data-drag-active='true'] {
-      background: transparent;
-    }
-
-    html[data-theme='ledger'] [data-slot='task-card'][data-drag-active='true']::before {
-      inset-block-start: 0.12rem;
-      inset-inline-end: 0.12rem;
-      background: color-mix(in srgb, var(--theme-semantic-accent) 6%, transparent);
-    }
-
-    html[data-theme='ledger'] [data-slot='task-card'][data-completed='true'] {
-      background: transparent;
-      border-radius: 6px;
-      margin-inline: 0;
-      padding: 0.78rem 0.9rem 0.72rem;
-    }
-
-    html[data-theme='ledger'] [data-slot='task-card'][data-completed='true']::before {
-      inset: 0.06rem;
-      background: color-mix(in srgb, var(--theme-semantic-success) 8%, transparent);
-    }
-
-    html[data-theme='ledger'] [data-slot='task-row'] {
-      gap: 0.45rem 0.8rem;
-      flex-wrap: wrap;
-    }
-
-    html[data-theme='ledger'] [data-slot='task-title'] {
-      font-size: 0.95rem;
-      font-weight: 500;
-    }
-
-    html[data-theme='ledger'] [data-slot='task-notes'] {
-      font-size: 0.8rem;
-      line-height: 1.35;
-    }
-
-    html[data-theme='ledger'] [data-slot='task-meta-line'] {
-      color: var(--theme-semantic-text-secondary);
-      font-size: 0.78rem;
-    }
-
-    html[data-theme='ledger'] [data-slot='task-tag-list'],
-    html[data-theme='ledger'] [data-slot='task-badges'] {
-      gap: 0.32rem;
-      row-gap: 0.32rem;
-    }
-
-    html[data-theme='ledger'] [data-slot='task-subtasks'] {
-      gap: 0.5rem;
-    }
-
-    html[data-theme='ledger'] [data-slot='task-footer'] {
-      gap: 0.4rem 0.8rem;
     }
 
     html[data-theme='ledger'] [data-slot='reward-card'],

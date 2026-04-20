@@ -3,6 +3,7 @@ import { ArrowCounterClockwiseIcon } from '@phosphor-icons/react/dist/csr/ArrowC
 import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
 import { TagIcon } from '@phosphor-icons/react/dist/csr/Tag'
 import { TrashIcon } from '@phosphor-icons/react/dist/csr/Trash'
+import { useState } from 'react'
 import {
   Badge,
   Button,
@@ -20,20 +21,92 @@ import { ManageMetricList, ManageRailCard, ManageTabLayout } from './ManageTabLa
 
 interface ManageCategoriesSectionProps {
   categories: Category[]
-  newCategoryName: string
-  newCategoryColor: string
-  onNewCategoryNameChange: (value: string) => void
-  onNewCategoryColorChange: (value: string) => void
 }
 
-export function ManageCategoriesSection({
-  categories,
-  newCategoryName,
-  newCategoryColor,
-  onNewCategoryNameChange,
-  onNewCategoryColorChange,
-}: ManageCategoriesSectionProps) {
+function ManageCategoryRow({ category }: { category: Category }) {
+  const [draftName, setDraftName] = useState(category.name)
+  const [draftColor, setDraftColor] = useState(category.colorKey)
+  const isDirty = draftName !== category.name || draftColor !== category.colorKey
+  const isSaveDisabled = !draftName.trim() || !isDirty
+
+  async function handleSave() {
+    if (isSaveDisabled) {
+      return
+    }
+
+    await updateCategory({
+      ...category,
+      name: draftName.trim(),
+      colorKey: draftColor,
+    })
+  }
+
+  return (
+    <div data-slot="category-item" className={styles.smallGrid}>
+      <div className={styles.row}>
+        <Badge tone={draftColor}>{draftName.trim() || 'Untitled category'}</Badge>
+        {category.archived ? (
+          <span data-slot="muted-text" className={sharedStyles.muted}>
+            Archived
+          </span>
+        ) : null}
+      </div>
+      <TextField
+        value={draftName}
+        onChange={(event) => setDraftName(event.target.value)}
+      />
+      <ColorPicker value={draftColor} onChange={setDraftColor} />
+      <div data-slot="action-group" className={sharedStyles.actions}>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => void handleSave()}
+          disabled={isSaveDisabled}
+        >
+          Save
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => void updateCategory({ ...category, archived: !category.archived })}
+        >
+          <span className={sharedStyles.inlineLabel}>
+            {category.archived ? (
+              <ArrowCounterClockwiseIcon aria-hidden="true" size={15} weight="bold" />
+            ) : (
+              <ArchiveIcon aria-hidden="true" size={15} weight="duotone" />
+            )}
+            <span>{category.archived ? 'Restore' : 'Archive'}</span>
+          </span>
+        </Button>
+        <Button
+          size="sm"
+          variant="danger"
+          onClick={() => {
+            if (
+              window.confirm(
+                `Delete "${category.name}"? Tasks using only this category will become uncategorized. This cannot be undone.`,
+              )
+            ) {
+              void deleteCategory(category.id)
+            }
+          }}
+        >
+          <span className={sharedStyles.inlineLabel}>
+            <TrashIcon aria-hidden="true" size={15} weight="bold" />
+            <span>Delete</span>
+          </span>
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+export function ManageCategoriesSection({ categories }: ManageCategoriesSectionProps) {
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [newCategoryColor, setNewCategoryColor] = useState('slate')
   const activeCategoryCount = categories.filter((category) => !category.archived).length
+  const isCreateDisabled = !newCategoryName.trim()
 
   return (
     <ManageTabLayout
@@ -49,8 +122,8 @@ export function ManageCategoriesSection({
                   name: newCategoryName,
                   colorKey: newCategoryColor,
                 }).then(() => {
-                  onNewCategoryNameChange('')
-                  onNewCategoryColorChange('slate')
+                  setNewCategoryName('')
+                  setNewCategoryColor('slate')
                 })
               }}
             >
@@ -62,7 +135,7 @@ export function ManageCategoriesSection({
                 <TextField
                   placeholder="Learning"
                   value={newCategoryName}
-                  onChange={(event) => onNewCategoryNameChange(event.target.value)}
+                  onChange={(event) => setNewCategoryName(event.target.value)}
                 />
               </Field>
               <Field label="Color">
@@ -70,10 +143,10 @@ export function ManageCategoriesSection({
                   <div className={styles.categoryPreview}>
                     <Badge tone={newCategoryColor}>{newCategoryName.trim() || 'New category'}</Badge>
                   </div>
-                  <ColorPicker value={newCategoryColor} onChange={onNewCategoryColorChange} />
+                  <ColorPicker value={newCategoryColor} onChange={setNewCategoryColor} />
                 </div>
               </Field>
-              <Button type="submit">
+              <Button type="submit" disabled={isCreateDisabled}>
                 <span className={sharedStyles.inlineLabel}>
                   <PlusIcon aria-hidden="true" size={16} weight="bold" />
                   <span>Create category</span>
@@ -106,58 +179,7 @@ export function ManageCategoriesSection({
           <div data-slot="category-list" className={sharedStyles.list}>
             {categories.length ? (
               categories.map((category) => (
-                <div data-slot="category-item" key={category.id} className={styles.smallGrid}>
-                  <div className={styles.row}>
-                    <Badge tone={category.colorKey}>{category.name}</Badge>
-                    {category.archived ? (
-                      <span data-slot="muted-text" className={sharedStyles.muted}>
-                        Archived
-                      </span>
-                    ) : null}
-                  </div>
-                  <TextField
-                    value={category.name}
-                    onChange={(event) => void updateCategory({ ...category, name: event.target.value })}
-                  />
-                  <ColorPicker
-                    value={category.colorKey}
-                    onChange={(value) => void updateCategory({ ...category, colorKey: value })}
-                  />
-                  <div data-slot="action-group" className={sharedStyles.actions}>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => void updateCategory({ ...category, archived: !category.archived })}
-                    >
-                      <span className={sharedStyles.inlineLabel}>
-                        {category.archived ? (
-                          <ArrowCounterClockwiseIcon aria-hidden="true" size={15} weight="bold" />
-                        ) : (
-                          <ArchiveIcon aria-hidden="true" size={15} weight="duotone" />
-                        )}
-                        <span>{category.archived ? 'Restore' : 'Archive'}</span>
-                      </span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            `Delete "${category.name}"? Tasks using only this category will become uncategorized. This cannot be undone.`,
-                          )
-                        ) {
-                          void deleteCategory(category.id)
-                        }
-                      }}
-                    >
-                      <span className={sharedStyles.inlineLabel}>
-                        <TrashIcon aria-hidden="true" size={15} weight="bold" />
-                        <span>Delete</span>
-                      </span>
-                    </Button>
-                  </div>
-                </div>
+                <ManageCategoryRow key={`${category.id}:${category.name}:${category.colorKey}`} category={category} />
               ))
             ) : (
               <p data-slot="muted-text" className={sharedStyles.muted}>No categories yet.</p>

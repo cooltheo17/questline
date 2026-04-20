@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { useRef, useState, type ChangeEvent } from 'react'
 import { useObservable } from 'dexie-react-hooks'
 import { GearSixIcon } from '@phosphor-icons/react/dist/csr/GearSix'
-import { Tabs, TabPanel } from '../components/primitives/Primitives'
+import { Card, Tabs, TabPanel } from '../components/primitives/Primitives'
 import { SectionHeading } from '../components/app/SectionHeading'
 import { exportSnapshot } from '../data/backup'
 import {
@@ -18,11 +18,16 @@ import {
 } from '../data/cloud'
 import { db } from '../data/db'
 import { importSnapshot } from '../data/repository'
-import { useAppCollectionsContext } from '../hooks/AppCollectionsContext'
+import {
+  useCategoriesCollectionContext,
+  useQuestsCollectionContext,
+  useRewardsCollectionContext,
+  useTasksCollectionContext,
+} from '../hooks/AppCollectionsContext'
 import { useSyncStore } from '../state/syncStore'
-import { useTheme } from '../theme/themeContext'
 import type { Quest, RewardItem, Task } from '../domain/types'
 import styles from './Page.module.css'
+import sharedStyles from '../components/app/Shared.module.css'
 import { ManageAppearanceSection } from './manage/ManageAppearanceSection'
 import { ManageCategoriesSection } from './manage/ManageCategoriesSection'
 import { ManageDataSection } from './manage/ManageDataSection'
@@ -33,7 +38,6 @@ import { QuestEditorDialog } from './manage/QuestEditorDialog'
 import { RewardEditorDialog } from './manage/RewardEditorDialog'
 import { TaskEditorDialog } from './manage/TaskEditorDialog'
 import {
-  createQuestFormState,
   formatDateTimeLabel,
   getBulkImportSummaries,
   toTaskUpdateInput,
@@ -41,8 +45,10 @@ import {
 import { updateTask, resetAllData } from '../data/repository'
 
 export function ManagePage() {
-  const { categories, tasks, quests, rewards } = useAppCollectionsContext()
-  const { theme, themes, setThemeId } = useTheme()
+  const categories = useCategoriesCollectionContext()
+  const tasks = useTasksCollectionContext()
+  const quests = useQuestsCollectionContext()
+  const rewards = useRewardsCollectionContext()
   const currentUser = useObservable(db.cloud.currentUser)
   const syncState = useObservable(db.cloud.syncState)
   const cloudSyncEnabled = useSyncStore((state) => state.cloudSyncEnabled)
@@ -57,16 +63,11 @@ export function ManagePage() {
 
     return new URLSearchParams(window.location.search).get('tab') ?? 'categories'
   })
-  const [newCategoryName, setNewCategoryName] = useState('')
-  const [newCategoryColor, setNewCategoryColor] = useState('slate')
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [editingReward, setEditingReward] = useState<RewardItem | null>(null)
   const [editingQuest, setEditingQuest] = useState<Quest | null>(null)
   const [message, setMessage] = useState('')
-  const [newQuest, setNewQuest] = useState(() => createQuestFormState())
   const importInputRef = useRef<HTMLInputElement>(null)
-  const scrollPositionRef = useRef(0)
-  const hasMountedTabRef = useRef(false)
   const categoryOptions = categories.filter((category) => !category.archived)
   const isSignedInToCloud = Boolean(currentUser?.isLoggedIn)
   const cloudEnabledForDevice = cloudSyncEnabled || isCloudEnabledForDevice()
@@ -94,22 +95,9 @@ export function ManagePage() {
     ? currentUser?.email ?? currentUser?.userId ?? 'Signed in'
     : 'Not signed in'
 
-  useEffect(() => {
-    if (!hasMountedTabRef.current) {
-      hasMountedTabRef.current = true
-      return
-    }
-
-    const frame = window.requestAnimationFrame(() => {
-      try {
-        window.scrollTo({ top: scrollPositionRef.current })
-      } catch {
-        // jsdom does not implement scrolling
-      }
-    })
-
-    return () => window.cancelAnimationFrame(frame)
-  }, [activeTab])
+  function reloadPage() {
+    window.location.reload()
+  }
 
   async function handleExport() {
     const snapshot = await exportSnapshot()
@@ -137,7 +125,7 @@ export function ManagePage() {
       return
     }
 
-    void file.text().then(importSnapshot).then(() => setMessage('Backup imported.'))
+    void file.text().then(importSnapshot).then(reloadPage)
   }
 
   function handlePrimaryCloudAction() {
@@ -171,22 +159,23 @@ export function ManagePage() {
 
   function handleReset() {
     if (window.confirm('Reset all local data? This cannot be undone.')) {
-      void resetAllData().then(() => setMessage('All local data reset.'))
+      void resetAllData().then(reloadPage)
     }
   }
 
   return (
     <div data-slot="page" className={styles.page}>
-      <SectionHeading
-        icon={<GearSixIcon aria-hidden="true" size={20} weight="duotone" />}
-        title="Manage"
-      />
+      <Card>
+        <div data-slot="section-panel" className={sharedStyles.panel}>
+          <SectionHeading
+            icon={<GearSixIcon aria-hidden="true" size={20} weight="duotone" />}
+            title="Manage"
+          />
+        </div>
+      </Card>
       <Tabs
         value={activeTab}
-        onValueChange={(value) => {
-          scrollPositionRef.current = window.scrollY
-          setActiveTab(value)
-        }}
+        onValueChange={setActiveTab}
         items={[
           { label: 'Categories', value: 'categories' },
           { label: 'Tasks', value: 'tasks' },
@@ -197,13 +186,7 @@ export function ManagePage() {
         ]}
       >
         <TabPanel value="categories">
-          <ManageCategoriesSection
-            categories={categories}
-            newCategoryName={newCategoryName}
-            newCategoryColor={newCategoryColor}
-            onNewCategoryNameChange={setNewCategoryName}
-            onNewCategoryColorChange={setNewCategoryColor}
-          />
+          <ManageCategoriesSection categories={categories} />
         </TabPanel>
 
         <TabPanel value="tasks">
@@ -216,12 +199,7 @@ export function ManagePage() {
         </TabPanel>
 
         <TabPanel value="quests">
-          <ManageQuestsSection
-            quests={quests}
-            newQuest={newQuest}
-            onNewQuestChange={setNewQuest}
-            onEditQuest={setEditingQuest}
-          />
+          <ManageQuestsSection quests={quests} onEditQuest={setEditingQuest} />
         </TabPanel>
 
         <TabPanel value="rewards">
@@ -229,7 +207,7 @@ export function ManagePage() {
         </TabPanel>
 
         <TabPanel value="appearance">
-          <ManageAppearanceSection theme={theme} themes={themes} onSelectTheme={setThemeId} />
+          <ManageAppearanceSection />
         </TabPanel>
 
         <TabPanel value="data">

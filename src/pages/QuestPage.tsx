@@ -4,25 +4,28 @@ import { ArrowLeftIcon } from '@phosphor-icons/react/dist/csr/ArrowLeft'
 import { TrophyIcon } from '@phosphor-icons/react/dist/csr/Trophy'
 import { GearSixIcon } from '@phosphor-icons/react/dist/csr/GearSix'
 import { Badge, Button, Card, ProgressBar } from '../components/primitives/Primitives'
-import { useAppCollections } from '../hooks/useAppCollections'
+import {
+  useAppCollectionsReady,
+  useCategoriesCollectionContext,
+  useCompletionsCollectionContext,
+  useQuestsCollectionContext,
+  useTasksCollectionContext,
+} from '../hooks/AppCollectionsContext'
 import { completeQuest } from '../data/repository'
+import { formatShortDateLabel } from '../domain/dateFormatting'
 import { getQuestProgress, getQuestTasks, isQuestTaskComplete } from '../domain/quests'
 import { getCategoryTone, UNCATEGORIZED_LABEL, UNCATEGORIZED_TONE } from '../domain/categories'
 import sharedStyles from '../components/app/Shared.module.css'
 import styles from './Page.module.css'
 
-function formatDateLabel(dateKey: string): string {
-  const [year, month, day] = dateKey.split('-').map(Number)
-  return new Intl.DateTimeFormat('en-GB', {
-    day: 'numeric',
-    month: 'short',
-  }).format(new Date(year, month - 1, day))
-}
-
 export function QuestPage() {
   const { questId } = useParams<{ questId: string }>()
   const navigate = useNavigate()
-  const { isReady, quests, tasks, categories, completions } = useAppCollections()
+  const isReady = useAppCollectionsReady()
+  const quests = useQuestsCollectionContext()
+  const tasks = useTasksCollectionContext()
+  const categories = useCategoriesCollectionContext()
+  const completions = useCompletionsCollectionContext()
   const [isCompleting, setIsCompleting] = useState(false)
   const quest = quests.find((entry) => entry.id === questId)
 
@@ -48,19 +51,23 @@ export function QuestPage() {
     )
   }
 
+  const categoriesById = new Map(categories.map((category) => [category.id, category]))
   const questTasks = getQuestTasks(quest.id, tasks)
   const progress = getQuestProgress(quest, tasks, completions)
   const taskViews = questTasks
     .map((task) => ({
       task,
       categories: task.categoryIds
-        .map((categoryId) => categories.find((category) => category.id === categoryId))
+        .map((categoryId) => categoriesById.get(categoryId))
         .filter((category): category is NonNullable<typeof category> => Boolean(category)),
       isComplete: isQuestTaskComplete(task, completions),
     }))
     .sort((left, right) => left.task.sortOrder - right.task.sortOrder)
 
   const canComplete = progress.readyToComplete && !quest.completedAt
+  const status = getQuestStatusPresentation(quest)
+  const claimButtonLabel = getQuestClaimButtonLabel(quest.completedAt, progress.readyToComplete)
+  const completedDateLabel = quest.completedAt ? formatShortDateLabel(quest.completedAt.slice(0, 10)) : null
 
   return (
     <div data-slot="page" className={styles.page}>
@@ -86,9 +93,7 @@ export function QuestPage() {
               <div className={styles.questSummary}>
                 <div className={styles.questHeader}>
                   <h2 data-slot="section-heading" className={sharedStyles.heading}>{quest.title}</h2>
-                  <Badge tone={quest.completedAt ? 'sage' : quest.archived ? 'mist' : 'plum'}>
-                    {quest.completedAt ? 'Completed' : quest.archived ? 'Archived' : 'Active'}
-                  </Badge>
+                  <Badge tone={status.tone}>{status.label}</Badge>
                 </div>
                 {quest.description ? <p data-slot="muted-text" className={sharedStyles.muted}>{quest.description}</p> : null}
                 <div className={styles.questRewards}>
@@ -107,10 +112,8 @@ export function QuestPage() {
                       ? `${progress.completedTasks} / ${progress.totalTasks} tasks`
                       : 'No quest tasks yet'}
                   </span>
-                  {progress.nextDueDate ? <span>Next due {formatDateLabel(progress.nextDueDate)}</span> : null}
-                  {quest.completedAt ? (
-                    <span>Completed on {new Date(quest.completedAt).toLocaleDateString()}</span>
-                  ) : null}
+                  {progress.nextDueDate ? <span>Next due {formatShortDateLabel(progress.nextDueDate)}</span> : null}
+                  {completedDateLabel ? <span>Completed on {completedDateLabel}</span> : null}
                 </div>
                 <div data-slot="action-group" className={styles.questActions}>
                   <Button
@@ -122,9 +125,7 @@ export function QuestPage() {
                   >
                     <span className={sharedStyles.inlineLabel}>
                       <TrophyIcon aria-hidden="true" size={16} weight="bold" />
-                      <span>
-                        {quest.completedAt ? 'Reward claimed' : progress.readyToComplete ? 'Claim reward' : 'Finish tasks'}
-                      </span>
+                      <span>{claimButtonLabel}</span>
                     </span>
                   </Button>
                   <Button variant="secondary" onClick={() => navigate('/manage?tab=quests')}>
@@ -154,8 +155,8 @@ export function QuestPage() {
                     <div>
                       <strong>{view.task.title}</strong>
                       <div className={styles.questTaskMeta}>
-                        {view.task.dueDate ? <span>Due {formatDateLabel(view.task.dueDate)}</span> : null}
-                        <span>{view.task.cadence === 'none' ? 'One-off task' : `${view.task.cadence} cadence`}</span>
+                        {view.task.dueDate ? <span>Due {formatShortDateLabel(view.task.dueDate)}</span> : null}
+                        <span>{getQuestTaskCadenceLabel(view.task.cadence)}</span>
                       </div>
                     </div>
                     <div className={styles.questTaskBadges}>
@@ -168,9 +169,7 @@ export function QuestPage() {
                       ) : (
                         <Badge tone={UNCATEGORIZED_TONE}>{UNCATEGORIZED_LABEL}</Badge>
                       )}
-                      <Badge tone={view.isComplete ? 'sage' : 'mist'}>
-                        {view.isComplete ? 'Complete' : 'In progress'}
-                      </Badge>
+                      <Badge tone={view.isComplete ? 'sage' : 'mist'}>{getQuestTaskStatusLabel(view.isComplete)}</Badge>
                     </div>
                   </div>
                 ))}
@@ -185,4 +184,32 @@ export function QuestPage() {
       </div>
     </div>
   )
+}
+
+function getQuestStatusPresentation(quest: { completedAt?: string; archived: boolean }) {
+  if (quest.completedAt) {
+    return { label: 'Completed', tone: 'sage' as const }
+  }
+
+  if (quest.archived) {
+    return { label: 'Archived', tone: 'mist' as const }
+  }
+
+  return { label: 'Active', tone: 'plum' as const }
+}
+
+function getQuestClaimButtonLabel(completedAt: string | undefined, readyToComplete: boolean) {
+  if (completedAt) {
+    return 'Reward claimed'
+  }
+
+  return readyToComplete ? 'Claim reward' : 'Finish tasks'
+}
+
+function getQuestTaskCadenceLabel(cadence: string) {
+  return cadence === 'none' ? 'One-off task' : `${cadence} cadence`
+}
+
+function getQuestTaskStatusLabel(isComplete: boolean) {
+  return isComplete ? 'Complete' : 'In progress'
 }

@@ -336,65 +336,6 @@ export const patchworkTheme: AppTheme = {
       border-top-width: 1px;
     }
 
-    html[data-theme='patchwork'] [data-slot='task-card'] {
-      gap: 0.85rem;
-      background: transparent;
-      border: 0;
-      border-top: 1px solid color-mix(in srgb, var(--theme-semantic-text-primary) 20%, transparent);
-      border-radius: 0;
-      padding: 1rem 0.8rem 1rem 0.95rem;
-      box-shadow: none;
-      position: relative;
-    }
-
-    html[data-theme='patchwork'] [data-slot='task-card']::before {
-      content: '';
-      position: absolute;
-      inset: 0 auto 0 0;
-      width: 0.32rem;
-      background: color-mix(in srgb, var(--theme-semantic-accent) 85%, transparent);
-      border-radius: 999px;
-      opacity: 0.92;
-    }
-
-    html[data-theme='patchwork'] [data-slot='task-card']:hover {
-      background: color-mix(in srgb, var(--theme-semantic-accent) 4%, transparent);
-      border-top-color: color-mix(in srgb, var(--theme-semantic-accent) 34%, transparent);
-      box-shadow: none;
-    }
-
-    html[data-theme='patchwork'] [data-slot='task-card'][data-drag-active='true'] {
-      background: color-mix(in srgb, var(--theme-semantic-accent) 7%, transparent);
-    }
-
-    html[data-theme='patchwork'] [data-slot='task-card'][data-completed='true'] {
-      background: color-mix(in srgb, var(--theme-semantic-success) 7%, transparent);
-    }
-
-    html[data-theme='patchwork'] [data-slot='task-card'][data-completed='true']::before {
-      background: color-mix(in srgb, var(--theme-semantic-success) 82%, transparent);
-    }
-
-    html[data-theme='patchwork'] [data-slot='task-tag-list'] {
-      gap: 0.45rem;
-    }
-
-    html[data-theme='patchwork'] [data-slot='task-title'] {
-      font-size: 1rem;
-      font-weight: 650;
-      letter-spacing: -0.01em;
-    }
-
-    html[data-theme='patchwork'] [data-slot='task-footer'] {
-      align-items: center;
-      column-gap: 1.25rem;
-      row-gap: 0.75rem;
-    }
-
-    html[data-theme='patchwork'] [data-slot='task-badges'] {
-      gap: 0.45rem;
-    }
-
     html[data-theme='patchwork'] [data-slot='history-list'] {
       gap: 0.65rem;
     }
@@ -402,11 +343,6 @@ export const patchworkTheme: AppTheme = {
     html[data-theme='patchwork'] [data-slot='scroll-panel'] {
       padding-right: 0.65rem;
       scrollbar-gutter: stable;
-    }
-
-    html[data-theme='patchwork'] [data-slot='history-list'] [data-slot='task-card'] {
-      padding-top: 1rem;
-      padding-bottom: 1rem;
     }
 
     html[data-theme='patchwork'] [data-slot='reward-card'] {

@@ -9,7 +9,6 @@ import { getTaskReward } from '../../domain/rewards'
 import { getCompletedSubtaskCount, getCompletedSubtaskIds } from '../../domain/subtasks'
 import { formatCadenceLabel } from '../../domain/taskUi'
 import type { Category, CompletionRecord, Task } from '../../domain/types'
-import { useTheme } from '../../theme/themeContext'
 import sharedStyles from './Shared.module.css'
 import styles from './TaskCard.module.css'
 
@@ -44,21 +43,28 @@ export function TaskCard({
   onDragOver?: () => void
   onDrop?: () => void
 }) {
-  const { theme } = useTheme()
   const reward = getTaskReward(task)
-  const isLedgerTheme = theme.id === 'ledger'
   const isReadOnly = Boolean(readOnly)
   const completedSubtaskIds = getCompletedSubtaskIds(task, completion)
   const completedIds = new Set(completedSubtaskIds)
   const cadenceLabel = formatCadenceLabel(task.cadence)
   const completedSubtaskCount = getCompletedSubtaskCount(task, completion)
   const subtaskProgressLabel = task.subtasks.length ? `${completedSubtaskCount}/${task.subtasks.length} steps` : null
-  const taskMetaParts = [
-    `${reward.xp} XP`,
-    `${reward.coins} coins`,
-    cadenceLabel,
-    subtaskProgressLabel,
-  ].filter((value): value is string => Boolean(value))
+  const taskClassName = [
+    styles.task,
+    isCompleted ? styles.completed : '',
+    draggable ? styles.draggable : '',
+    dragActive ? styles.dragActive : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+  const footerAction = getTaskFooterAction({
+    actionSlot,
+    isCompleted,
+    isReadOnly,
+    onComplete,
+    hasSubtasks: Boolean(subtaskProgressLabel),
+  })
   const handleDragStart = (event: ReactDragEvent<HTMLElement>) => {
     if (!draggable) {
       return
@@ -104,14 +110,7 @@ export function TaskCard({
         event.preventDefault()
         onDrop?.()
       }}
-      className={[
-        styles.task,
-        isCompleted ? styles.completed : '',
-        draggable ? styles.draggable : '',
-        dragActive ? styles.dragActive : '',
-      ]
-        .filter(Boolean)
-        .join(' ')}
+      className={taskClassName}
     >
       <div data-slot="task-row" className={styles.row}>
         <div className={styles.primary}>
@@ -167,50 +166,62 @@ export function TaskCard({
       ) : null}
 
       <div data-slot="task-footer" className={styles.footer}>
-        {isLedgerTheme ? (
-          <div data-slot="task-meta-line" className={styles.metaLine}>
-            {taskMetaParts.map((part, index) => (
-              <span key={part} className={styles.metaItem}>
-                {index > 0 ? <span className={styles.metaDivider}>·</span> : null}
-                <span>{part}</span>
-              </span>
-            ))}
-          </div>
-        ) : (
-          <div data-slot="task-badges" className={styles.badges}>
-            <Badge tone="brass">
-              <span className={sharedStyles.inlineLabel}>
-                <span>{reward.xp} XP · {reward.coins}</span>
-                <CoinsIcon aria-hidden="true" size={15} weight="duotone" />
-              </span>
-            </Badge>
-            <Badge tone="slate">{cadenceLabel}</Badge>
-          </div>
-        )}
-        {actionSlot ? (
-          actionSlot
-        ) : task.subtasks.length === 0 ? (
-          <Button disabled={isCompleted || isReadOnly} onClick={() => {
-            if (isReadOnly) {
-              return
-            }
-            void onComplete()
-          }}>
-            {isCompleted ? (
-              'Claimed'
-            ) : (
-              <span className={sharedStyles.inlineLabel}>
-                <CheckIcon aria-hidden="true" size={16} weight="bold" />
-                <span>Mark done</span>
-              </span>
-            )}
-          </Button>
-        ) : isLedgerTheme ? null : (
-          <Badge>
-            {subtaskProgressLabel}
-          </Badge>
-        )}
+        <div data-slot="task-meta" className={styles.meta}>
+          <span className={[styles.metaItem, styles.metaPill, styles.metaReward].join(' ')}>
+            <span className={sharedStyles.inlineLabel}>
+              <span>{reward.xp} XP · {reward.coins}</span>
+              <CoinsIcon aria-hidden="true" size={15} weight="duotone" />
+            </span>
+          </span>
+          <span className={[styles.metaItem, styles.metaPill].join(' ')}>{cadenceLabel}</span>
+          {subtaskProgressLabel ? (
+            <span className={[styles.metaItem, styles.metaPill].join(' ')}>{subtaskProgressLabel}</span>
+          ) : null}
+        </div>
+        {footerAction}
       </div>
     </motion.article>
   )
+}
+
+function getTaskFooterAction({
+  actionSlot,
+  isCompleted,
+  isReadOnly,
+  onComplete,
+  hasSubtasks,
+}: {
+  actionSlot: ReactNode
+  isCompleted: boolean
+  isReadOnly: boolean
+  onComplete: () => Promise<void>
+  hasSubtasks: boolean
+}) {
+  if (actionSlot) {
+    return actionSlot
+  }
+
+  if (!hasSubtasks) {
+    return (
+      <Button
+        disabled={isCompleted || isReadOnly}
+        onClick={() => {
+          if (!isReadOnly) {
+            void onComplete()
+          }
+        }}
+      >
+        {isCompleted ? (
+          'Claimed'
+        ) : (
+          <span className={sharedStyles.inlineLabel}>
+            <CheckIcon aria-hidden="true" size={16} weight="bold" />
+            <span>Mark done</span>
+          </span>
+        )}
+      </Button>
+    )
+  }
+
+  return null
 }

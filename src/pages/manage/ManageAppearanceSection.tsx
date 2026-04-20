@@ -3,21 +3,12 @@ import { PaletteIcon } from '@phosphor-icons/react/dist/csr/Palette'
 import { Card } from '../../components/primitives/Primitives'
 import sharedStyles from '../../components/app/Shared.module.css'
 import { SectionHeading } from '../../components/app/SectionHeading'
-import type { AppTheme } from '../../theme/types'
+import { useTheme } from '../../theme/themeContext'
 import styles from '../Page.module.css'
 import { ManageMetricList, ManageRailCard, ManageTabLayout } from './ManageTabLayout'
 
-interface ManageAppearanceSectionProps {
-  theme: AppTheme
-  themes: AppTheme[]
-  onSelectTheme: (themeId: string) => void
-}
-
-export function ManageAppearanceSection({
-  theme,
-  themes,
-  onSelectTheme,
-}: ManageAppearanceSectionProps) {
+export function ManageAppearanceSection() {
+  const { theme, themes, setThemeId } = useTheme()
   const lightThemeCount = themes.filter((candidate) => candidate.meta.colorScheme === 'light').length
 
   return (
@@ -77,7 +68,7 @@ export function ManageAppearanceSection({
               type="button"
               className={styles.themeCardButton}
               aria-pressed={theme.id === candidate.id}
-              onClick={() => onSelectTheme(candidate.id)}
+              onClick={() => setThemeId(candidate.id)}
             >
               <div className={styles.themePreview}>
                 <div
