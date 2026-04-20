@@ -31,6 +31,7 @@ import {
 } from '../domain/selectors'
 import { getTaskReward } from '../domain/rewards'
 import { getQuestProgress, getQuestTasks } from '../domain/quests'
+import { getCompletedSubtaskCount } from '../domain/subtasks'
 import { useAppCollectionsContext } from '../hooks/AppCollectionsContext'
 import { useTheme } from '../theme/themeContext'
 import { useUiStore } from '../state/uiStore'
@@ -200,7 +201,7 @@ export function TodayPage() {
                                     })
                                   }}
                                   onToggleSubtask={async (subtaskId) => {
-                                    const hadCount = item.completion?.completedSubtaskIds.length ?? 0
+                                    const hadCount = getCompletedSubtaskCount(item.task, item.completion)
                                     await toggleSubtask(item.task, subtaskId)
                                     if (hadCount === item.task.subtasks.length - 1) {
                                       const reward = getTaskReward(item.task)
@@ -261,7 +262,7 @@ export function TodayPage() {
                             if (isReadOnly) {
                               return
                             }
-                            const hadCount = item.completion?.completedSubtaskIds.length ?? 0
+                            const hadCount = getCompletedSubtaskCount(item.task, item.completion)
                             await toggleSubtask(item.task, subtaskId)
                             if (hadCount === item.task.subtasks.length - 1) {
                               const reward = getTaskReward(item.task)

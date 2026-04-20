@@ -1,4 +1,6 @@
 import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
+import { FilesIcon } from '@phosphor-icons/react/dist/csr/Files'
+import { ListChecksIcon } from '@phosphor-icons/react/dist/csr/ListChecks'
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
 import { TrashIcon } from '@phosphor-icons/react/dist/csr/Trash'
 import { Button, Card } from '../../components/primitives/Primitives'
@@ -47,7 +49,10 @@ export function ManageTasksSection({
 
           <Card>
             <div data-slot="section-panel" className={sharedStyles.panel}>
-              <SectionHeading title="Bulk imports" />
+              <SectionHeading
+                icon={<FilesIcon aria-hidden="true" size={20} weight="duotone" />}
+                title="Bulk imports"
+              />
               {bulkImportBatches.length ? (
                 <div data-slot="stack-list" className={sharedStyles.list}>
                   {bulkImportBatches.map((batch) => (
@@ -87,7 +92,10 @@ export function ManageTasksSection({
     >
       <Card>
         <div data-slot="section-panel" className={sharedStyles.panel}>
-          <SectionHeading title="Task library" />
+          <SectionHeading
+            icon={<ListChecksIcon aria-hidden="true" size={20} weight="duotone" />}
+            title="Task library"
+          />
           <div data-slot="stack-list" className={sharedStyles.list}>
             {sortedTasks.length ? (
               sortedTasks.map((task) => (

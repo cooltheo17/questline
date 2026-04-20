@@ -178,7 +178,7 @@ export const ledgerTheme: AppTheme = {
     }
 
     html[data-theme='ledger'] [data-slot='section-title'] {
-      align-items: center;
+      align-items: flex-start;
       gap: 0.5rem 0.7rem;
       flex-wrap: wrap;
     }

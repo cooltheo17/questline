@@ -1,3 +1,4 @@
+import { GiftIcon } from '@phosphor-icons/react/dist/csr/Gift'
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
 import { TrashIcon } from '@phosphor-icons/react/dist/csr/Trash'
 import { Button, Card } from '../../components/primitives/Primitives'
@@ -35,7 +36,10 @@ export function ManageRewardsSection({ rewards, onEditReward }: ManageRewardsSec
     >
       <Card>
         <div data-slot="section-panel" className={sharedStyles.panel}>
-          <SectionHeading title="Reward library" />
+          <SectionHeading
+            icon={<GiftIcon aria-hidden="true" size={20} weight="duotone" />}
+            title="Reward library"
+          />
           <div data-slot="stack-list" className={sharedStyles.list}>
             {rewards.length ? (
               rewards.map((reward) => (

@@ -6,6 +6,7 @@ import type { DragEvent as ReactDragEvent, ReactNode } from 'react'
 import { Badge, Button, Checkbox } from '../primitives/Primitives'
 import { getCategoryTone, UNCATEGORIZED_LABEL, UNCATEGORIZED_TONE } from '../../domain/categories'
 import { getTaskReward } from '../../domain/rewards'
+import { getCompletedSubtaskCount, getCompletedSubtaskIds } from '../../domain/subtasks'
 import { formatCadenceLabel } from '../../domain/taskUi'
 import type { Category, CompletionRecord, Task } from '../../domain/types'
 import { useTheme } from '../../theme/themeContext'
@@ -47,9 +48,10 @@ export function TaskCard({
   const reward = getTaskReward(task)
   const isLedgerTheme = theme.id === 'ledger'
   const isReadOnly = Boolean(readOnly)
-  const completedIds = new Set(completion?.completedSubtaskIds ?? [])
+  const completedSubtaskIds = getCompletedSubtaskIds(task, completion)
+  const completedIds = new Set(completedSubtaskIds)
   const cadenceLabel = formatCadenceLabel(task.cadence)
-  const completedSubtaskCount = completion?.completedSubtaskIds.length ?? 0
+  const completedSubtaskCount = getCompletedSubtaskCount(task, completion)
   const subtaskProgressLabel = task.subtasks.length ? `${completedSubtaskCount}/${task.subtasks.length} steps` : null
   const taskMetaParts = [
     `${reward.xp} XP`,

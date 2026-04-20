@@ -2,6 +2,7 @@ import { db } from './db'
 import { parseSnapshot } from './backup'
 import { getCompletionForDate, getOccurrenceKey } from '../domain/recurrence'
 import { getTaskReward, getWalletBalance } from '../domain/rewards'
+import { getCompletedSubtaskIds } from '../domain/subtasks'
 import type { BulkImportPlan } from '../domain/bulkAdd'
 import type {
   AppSnapshot,
@@ -13,6 +14,7 @@ import type {
   CreateTaskInput,
   Quest,
   RewardItem,
+  Subtask,
   Task,
   UpdateQuestInput,
   UpdateRewardInput,
@@ -74,15 +76,35 @@ function toAnchorDate(dueDate: string | undefined): string {
   return dueDate ? parseLocalDateKey(dueDate).toISOString() : new Date().toISOString()
 }
 
-function toSubtasks(titles: string[]) {
+function normalizeSubtaskTitles(titles: string[]): string[] {
   return titles
     .map((title) => title.trim())
     .filter(Boolean)
+}
+
+function toSubtasks(titles: string[]): Subtask[] {
+  return normalizeSubtaskTitles(titles)
     .map((title, index) => ({
       id: createId(),
       title,
       sortOrder: index,
     }))
+}
+
+function toUpdatedSubtasks(currentSubtasks: Subtask[], titles: string[]): Subtask[] {
+  const remainingIdsByTitle = new Map<string, string[]>()
+
+  for (const subtask of currentSubtasks) {
+    const matchingIds = remainingIdsByTitle.get(subtask.title) ?? []
+    matchingIds.push(subtask.id)
+    remainingIdsByTitle.set(subtask.title, matchingIds)
+  }
+
+  return normalizeSubtaskTitles(titles).map((title, index) => ({
+    id: remainingIdsByTitle.get(title)?.shift() ?? createId(),
+    title,
+    sortOrder: index,
+  }))
 }
 
 export async function ensureSeedData(): Promise<void> {
@@ -152,20 +174,28 @@ export async function updateTask(input: UpdateTaskInput): Promise<void> {
 
   const dueDate = normalizeDueDate(input.dueDate)
   const questId = normalizeQuestId(input.questId)
+  const subtasks = toUpdatedSubtasks(current.subtasks, input.subtasks ?? [])
+  const validSubtaskIds = new Set(subtasks.map((subtask) => subtask.id))
 
-  await db.tasks.put({
-    ...current,
-    title: input.title.trim(),
-    notes: input.notes?.trim() || undefined,
-    categoryIds: input.categoryIds,
-    dueDate,
-    questId,
-    cadence: input.cadence,
-    difficulty: input.difficulty,
-    rewardOverride: input.rewardOverride,
-    subtasks: toSubtasks(input.subtasks ?? []),
-    active: input.active,
-    anchorDate: dueDate ? toAnchorDate(dueDate) : current.anchorDate,
+  await db.transaction('rw', db.tasks, db.completions, async () => {
+    await db.tasks.put({
+      ...current,
+      title: input.title.trim(),
+      notes: input.notes?.trim() || undefined,
+      categoryIds: input.categoryIds,
+      dueDate,
+      questId,
+      cadence: input.cadence,
+      difficulty: input.difficulty,
+      rewardOverride: input.rewardOverride,
+      subtasks,
+      active: input.active,
+      anchorDate: dueDate ? toAnchorDate(dueDate) : current.anchorDate,
+    })
+
+    await db.completions.where('taskId').equals(current.id).modify((completion) => {
+      completion.completedSubtaskIds = completion.completedSubtaskIds.filter((subtaskId) => validSubtaskIds.has(subtaskId))
+    })
   })
 }
 
@@ -398,6 +428,12 @@ export async function completeTask(task: Task, when = new Date()): Promise<void>
 }
 
 export async function toggleSubtask(task: Task, subtaskId: string, when = new Date()): Promise<void> {
+  const validSubtaskIds = new Set(task.subtasks.map((subtask) => subtask.id))
+
+  if (!validSubtaskIds.has(subtaskId)) {
+    return
+  }
+
   const completions = await db.completions.where('taskId').equals(task.id).toArray()
   const existing = getCompletionForDate(task, completions, when)
 
@@ -415,7 +451,7 @@ export async function toggleSubtask(task: Task, subtaskId: string, when = new Da
       coinsAwarded: 0,
     }
 
-  const completedIds = new Set(completion.completedSubtaskIds)
+  const completedIds = new Set(getCompletedSubtaskIds(task, completion))
 
   if (completedIds.has(subtaskId)) {
     completedIds.delete(subtaskId)

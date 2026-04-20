@@ -1,4 +1,5 @@
 import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
+import { PaletteIcon } from '@phosphor-icons/react/dist/csr/Palette'
 import { Card } from '../../components/primitives/Primitives'
 import sharedStyles from '../../components/app/Shared.module.css'
 import { SectionHeading } from '../../components/app/SectionHeading'
@@ -53,7 +54,10 @@ export function ManageAppearanceSection({
     >
       <Card>
         <div data-slot="section-panel" className={sharedStyles.panel}>
-          <SectionHeading title="Theme gallery" />
+          <SectionHeading
+            icon={<PaletteIcon aria-hidden="true" size={20} weight="duotone" />}
+            title="Theme gallery"
+          />
           <p data-slot="muted-text" className={sharedStyles.muted}>
             Pick a theme and the shell updates immediately without the Manage frame shifting around it.
           </p>
